@@ -2829,6 +2829,16 @@ const OrderModal = ({
     calculateTotals(orderItems, 0, new Date()).venteTotal +
     (parseFloat(shippingNational) || 0);
 
+  // NOUVEAU : Calcul du montant des articles physiquement en Algérie
+  const montantEnAlgerie = orderItems
+    .filter(
+      (item) =>
+        item.status === "Reçu" ||
+        item.status === "Livré" ||
+        parseFloat(item.weightG) > 0
+    )
+    .reduce((sum, i) => sum + (parseFloat(i.priceVente) || 0), 0);
+
   const isFullyPaidStatus =
     orderStatus === "Payée" || orderStatus === "Payée et livrée";
   const resteToPay = isFullyPaidStatus
@@ -3080,20 +3090,29 @@ const OrderModal = ({
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">
                           Poids(g)
                         </span>
+                        {/* NOUVEAU : Changement de statut automatique basé sur le poids */}
                         <input
                           type="number"
                           placeholder="g"
                           className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent"
                           value={item.weightG}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const val = e.target.value;
                             setOrderItems(
-                              orderItems.map((oi) =>
-                                oi.id === item.id
-                                  ? { ...oi, weightG: e.target.value }
-                                  : oi
-                              )
-                            )
-                          }
+                              orderItems.map((oi) => {
+                                if (oi.id === item.id) {
+                                  let newStatus = oi.status;
+                                  if (parseFloat(val) > 0 && oi.status === "En attente") {
+                                    newStatus = "Reçu";
+                                  } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") {
+                                    newStatus = "En attente";
+                                  }
+                                  return { ...oi, weightG: val, status: newStatus };
+                                }
+                                return oi;
+                              })
+                            );
+                          }}
                         />
                       </div>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
@@ -3294,6 +3313,12 @@ const OrderModal = ({
                 </div>
 
                 <div className="space-y-2 mt-4">
+                  {/* NOUVEAU : Affichage des articles en Algérie */}
+                  <div className="flex justify-between text-[11px] font-bold text-blue-600/80 bg-blue-50/50 p-2 rounded-lg border border-blue-100 mb-2">
+                    <span>Montant des articles en Algérie :</span>
+                    <span>{formatDA(montantEnAlgerie)}</span>
+                  </div>
+
                   <div className="flex justify-between text-xs font-bold text-gray-500">
                     <span>Total Panier + Liv :</span>
                     <span>{formatDA(totalVenteEtLivraison)}</span>
@@ -3338,7 +3363,6 @@ const OrderModal = ({
     </div>
   );
 };
-
 const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
   const [selectedWilaya, setSelectedWilaya] = useState(
     editingCustomer?.wilaya || ""
