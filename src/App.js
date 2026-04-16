@@ -1240,6 +1240,8 @@ const MainApp = ({ user }) => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 relative custom-scrollbar bg-[#FDFBF7] print:hidden">
         <div className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          
+          {/* Bloc de Gauche : Titre et Boutons Mobiles */}
           <div className="flex items-center gap-2 w-full md:w-auto justify-between">
             <div className="flex items-center gap-2">
               <div className="md:hidden w-8 h-8 bg-[#8D7B68] rounded-xl flex items-center justify-center text-white shadow-sm">
@@ -1255,31 +1257,52 @@ const MainApp = ({ user }) => {
                 )}
               </h2>
             </div>
-            <button
-              onClick={() => setShowConfig(true)}
-              className="md:hidden p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30"
-            >
-              <Settings2 size={16} />
-            </button>
-          </div>
-
-          <div className="flex gap-2">
+            
+            {/* Boutons visibles uniquement sur Mobile */}
+            <div className="flex gap-2 md:hidden">
               <button
                 onClick={() => setShowCalculator(true)}
-                className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform flex items-center gap-2"
+                className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform"
                 title="Simulateur de prix"
               >
                 <Calculator size={16} />
-                <span className="hidden md:inline text-[10px] font-bold uppercase tracking-widest">Simulateur</span>
               </button>
               <button
                 onClick={() => setShowConfig(true)}
-                className="md:hidden p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30"
+                className="p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30"
               >
                 <Settings2 size={16} />
               </button>
             </div>
-            {/* Filters */}
+          </div>
+
+          {/* Bloc de Droite : Bouton PC, Recherche et Filtres */}
+          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+            {/* Bouton Calculatrice visible uniquement sur PC */}
+            <button
+              onClick={() => setShowCalculator(true)}
+              className="hidden md:flex px-4 py-2.5 text-white bg-[#8D7B68] rounded-full shadow-sm hover:-translate-y-1 transition-transform items-center gap-2 font-bold text-xs"
+              title="Simulateur de prix"
+            >
+              <Calculator size={14} /> Simulateur
+            </button>
+
+            {/* Barre de Recherche Globale */}
+            <div className="relative w-full md:w-64">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                placeholder="Recherche globale..."
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#8D7B68]"
+              />
+            </div>
+            
+            {/* Filtres par Date */}
             <div className="flex gap-1 bg-white/80 p-1.5 rounded-xl shadow-sm border border-[#E8D5C4]/20 w-full md:w-auto justify-center">
               <select
                 value={filterYear}
@@ -1296,19 +1319,7 @@ const MainApp = ({ user }) => {
                 className="text-[10px] md:text-xs font-bold outline-none bg-transparent text-[#8D7B68]"
               >
                 {[
-                  "Tous",
-                  "Jan",
-                  "Fév",
-                  "Mar",
-                  "Avr",
-                  "Mai",
-                  "Juin",
-                  "Juil",
-                  "Août",
-                  "Sep",
-                  "Oct",
-                  "Nov",
-                  "Déc",
+                  "Tous", "Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc",
                 ].map((m, i) => (
                   <option key={i} value={i}>
                     {m}
@@ -3429,6 +3440,7 @@ const OrderModal = ({
     </div>
   );
 };
+
 const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
   const [selectedWilaya, setSelectedWilaya] = useState(
     editingCustomer?.wilaya || ""
@@ -4114,10 +4126,8 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
     : Math.max(0, subtotal + shipping - advance);
 
   return (
-    // 1. Ajustement du conteneur : devient "absolute" à l'impression pour ne pas être coupé sur mobile
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       
-      {/* 2. Formatage de la largeur et suppression des ombres pour un rendu A4 / Thermique parfait */}
       <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
         
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
@@ -4198,7 +4208,6 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
 
               <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:bg-white print:border print:border-black print:p-2">
                 {items.map((item, idx) => (
-                  // 3. Affichage structuré de l'article avec sa catégorie
                   <div
                     key={idx}
                     className="flex flex-col border-b border-gray-200/50 last:border-0 pb-2 last:pb-0 print:border-gray-300"
@@ -4219,7 +4228,6 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
               </div>
             </div>
 
-            {/* 4. Le bloc de prix forcé avec des bordures noires à l'impression */}
             <div className="bg-[#8D7B68] p-5 rounded-2xl text-white text-center shadow-md relative overflow-hidden print:bg-white print:border-2 print:border-black print:text-black print:shadow-none print:p-3">
               <p className="text-[10px] uppercase tracking-widest font-bold mb-1 print:text-gray-800">
                 Montant à encaisser à la livraison
@@ -4251,10 +4259,8 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
     : Math.max(0, subtotal + shipping - advance);
 
   return (
-    // 1. Conteneur optimisé pour prendre tout l'écran à l'impression
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       
-      {/* 2. Suppression des ombres et forçage du fond blanc pour l'impression */}
       <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:bg-white print:overflow-visible">
         
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
@@ -4292,7 +4298,6 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               CMD #{order.orderNumber}
             </p>
             
-            {/* 3. Liste des articles repensée pour inclure la catégorie */}
             <div className="space-y-3 print:space-y-2">
               {items.map((item, idx) => (
                 <div
@@ -4320,7 +4325,6 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
             </div>
           </div>
 
-          {/* 4. Récapitulatif financier forcé en noir pour l'impression */}
           <div className="space-y-2 md:space-y-3 text-xs bg-white/50 p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/20 print:bg-transparent print:border-none print:p-0">
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black print:font-medium">
               <span>Sous-total</span>
