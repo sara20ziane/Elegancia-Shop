@@ -899,47 +899,64 @@ const MainApp = ({ user }) => {
   }, [orders, sponsors, expenses, filterYear]);
 
   const handleSaveOrder = async (e, setIsSaving) => {
-  // ... (récupération des données existantes)
-  
-  const totalVenteFinal = t.venteTotal; 
-  const totalAvances = totalAdvance;
-  
-  // 1. Gestion du Portefeuille si retour ou annulation
-  if (totalAvances > (totalVenteFinal + shippingNational)) {
-    const excedent = totalAvances - (totalVenteFinal + shippingNational);
-    const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
-    // On met à jour le crédit de la cliente (nécessite de lire le crédit actuel avant)
-    await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
-    showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
-  }
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const formData = new FormData(e.target);
+      const customerId = formData.get("customerId");
+      const customer = customers.find((c) => c.id === customerId);
+      const selectedDate = new Date(formData.get("orderDate") || new Date());
+      const t = calculateTotals(orderItems, shippingNational, selectedDate);
+      const totalAdvance = orderPayments.reduce(
+        (sum, p) => sum + parseFloat(p.amount || 0),
+        0
+      );
 
-  // 2. Génération automatique des dépenses de retour
-  const itemsRetournes = orderItems.filter(it => it.status === "Retourné Fournisseur");
-  for (const item of itemsRetournes) {
-    if (item.fraisRetourLivreur > 0) {
-      await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
-        label: `Retour Livreur - CMD ${orderNumber}`,
-        amountDA: parseFloat(item.fraisRetourLivreur),
-        date: new Date().toISOString().split('T')[0],
-        type: "Retour"
-      });
-    }
-  }
-  
-  // ... (suite de la sauvegarde)
-};
+      const data = {
+        orderNumber: formData.get("orderNumber"),
+        customerId: customerId,
+        customerName: customer?.name || "Inconnue",
+        items: t.processed,
+        payments: orderPayments,
+        shippingNational: parseFloat(shippingNational) || 0,
+        advancePayment: totalAdvance,
+        totalVente: t.venteTotal,
+        benefit: t.benefit,
+        status: orderStatus,
+        date: Timestamp.fromDate(selectedDate),
+      };
+
+      // --- NOUVEAUTÉ : Gestion du Portefeuille ---
+      const totalVenteEtLivraison = t.venteTotal + (parseFloat(shippingNational) || 0);
+      if (totalAdvance > totalVenteEtLivraison && customerId) {
+        const excedent = totalAdvance - totalVenteEtLivraison;
+        const customerRef = doc(db, "artifacts", appId, "public", "data", "customers", customerId);
+        await updateDoc(customerRef, { walletDA: (customer?.walletDA || 0) + excedent });
+        showToast(`Excédent de ${excedent} DA ajouté au portefeuille cliente`);
+      }
+
+      // --- NOUVEAUTÉ : Dépenses de retour automatiques ---
+      const itemsRetournes = orderItems.filter(it => it.status === "Retourné Fournisseur");
+      for (const item of itemsRetournes) {
+        if (parseFloat(item.fraisRetourLivreur) > 0) {
+          await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
+            label: `Retour Livreur - CMD ${formData.get("orderNumber")}`,
+            amountDA: parseFloat(item.fraisRetourLivreur),
+            date: new Date().toISOString().split('T')[0]
+          });
+        }
+        if (parseFloat(item.fraisRetourFournisseur) > 0) {
+          await addDoc(collection(db, "artifacts", appId, "public", "data", "expenses"), {
+            label: `Retour Frs - CMD ${formData.get("orderNumber")}`,
+            amountDA: parseFloat(item.fraisRetourFournisseur),
+            date: new Date().toISOString().split('T')[0]
+          });
+        }
+      }
 
       if (editingOrder) {
         await updateDoc(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "orders",
-            editingOrder.id
-          ),
+          doc(db, "artifacts", appId, "public", "data", "orders", editingOrder.id),
           data
         );
         showToast("Commande modifiée avec succès");
