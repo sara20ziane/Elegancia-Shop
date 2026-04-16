@@ -1493,4 +1493,3 @@ const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems
     </div>
   );
 };
-quand je clique sur des boutons comme borderau de livraison la fenetre devient blanche et je ne peux pas retourner
