@@ -527,6 +527,7 @@ const MainApp = ({ user }) => {
   const [orderStatusFilter, setOrderStatusFilter] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -1262,20 +1263,21 @@ const MainApp = ({ user }) => {
             </button>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-            {/* Global Search */}
-            <div className="relative w-full md:w-64">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                placeholder="Recherche globale..."
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white rounded-full text-xs font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/40 focus:border-[#8D7B68]"
-              />
+          <div className="flex gap-2">
+              <button
+                onClick={() => setShowCalculator(true)}
+                className="p-2.5 text-white bg-[#8D7B68] rounded-xl shadow-sm hover:scale-105 transition-transform flex items-center gap-2"
+                title="Simulateur de prix"
+              >
+                <Calculator size={16} />
+                <span className="hidden md:inline text-[10px] font-bold uppercase tracking-widest">Simulateur</span>
+              </button>
+              <button
+                onClick={() => setShowConfig(true)}
+                className="md:hidden p-2.5 text-[#8D7B68] bg-white rounded-xl shadow-sm border border-[#E8D5C4]/30"
+              >
+                <Settings2 size={16} />
+              </button>
             </div>
             {/* Filters */}
             <div className="flex gap-1 bg-white/80 p-1.5 rounded-xl shadow-sm border border-[#E8D5C4]/20 w-full md:w-auto justify-center">
@@ -2614,6 +2616,13 @@ const MainApp = ({ user }) => {
           }}
         />
       )}
+      {showCalculator && (
+        <PriceCalculatorModal
+          onClose={() => setShowCalculator(false)}
+          currencyRates={currencyRates}
+          formatDA={formatDA}
+        />
+      )}
 
       {showAddSponsor && (
         <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4">
@@ -3931,6 +3940,152 @@ const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
                 </tr>
               </tfoot>
             </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PriceCalculatorModal = ({ onClose, currencyRates, formatDA }) => {
+  // Récupération automatique du dernier taux de change enregistré
+  const latestRate = currencyRates?.length
+    ? [...currencyRates].sort((a, b) => new Date(b.date) - new Date(a.date))[0].rate
+    : 250;
+
+  const [priceEur, setPriceEur] = useState("");
+  const [rate, setRate] = useState(latestRate);
+  const [logMode, setLogMode] = useState("poids"); // 'poids' ou 'fixe'
+  const [weightG, setWeightG] = useState("");
+  const [fraisFixe, setFraisFixe] = useState("");
+
+  const pEur = parseFloat(priceEur) || 0;
+  const r = parseFloat(rate) || 0;
+  const w = parseFloat(weightG) || 0;
+  const f = parseFloat(fraisFixe) || 0;
+
+  // Calcul du coefficient selon tes règles
+  let coeff = 1.3;
+  if (pEur >= 15 && pEur < 30) coeff = 1.25;
+  if (pEur >= 30) coeff = 1.2;
+
+  const achatDA = pEur * r;
+  const venteBaseDA = achatDA * coeff;
+  const logDA = logMode === "poids" ? (w / 1000) * 2200 : f;
+  
+  const finalPrice = venteBaseDA + logDA;
+  const benefit = finalPrice - achatDA - logDA;
+
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+      <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
+        <div className="p-6 border-b border-[#E8D5C4]/30 flex justify-between items-center bg-white rounded-t-[2rem]">
+          <h3 className="text-lg font-serif text-[#8D7B68] font-bold flex items-center gap-2 tracking-widest uppercase">
+            <Calculator size={20} className="text-[#D4B996]" /> Simulateur
+          </h3>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-50 rounded-full transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        
+        <div className="p-6 space-y-6">
+          {/* Section Achat */}
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-1 space-y-1">
+                <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Prix Achat (€)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  autoFocus
+                  value={priceEur}
+                  onChange={(e) => setPriceEur(e.target.value)}
+                  className="w-full p-4 rounded-2xl bg-white text-lg font-black text-[#8D7B68] outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-[#D4B996] text-center"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="w-24 space-y-1">
+                <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Taux Actuel</label>
+                <input
+                  type="number"
+                  value={rate}
+                  onChange={(e) => setRate(e.target.value)}
+                  className="w-full p-4 rounded-2xl bg-[#FAF7F2] text-sm font-bold text-gray-500 outline-none border border-transparent text-center"
+                />
+              </div>
+            </div>
+            
+            {pEur > 0 && (
+              <div className="flex justify-between items-center px-4 py-2 bg-white rounded-xl border border-gray-100 text-[11px] font-medium text-gray-500 shadow-sm">
+                <span>Coeff. appliqué : <strong className="text-[#D4B996]">x{coeff}</strong></span>
+                <span>= {formatDA(achatDA)} (Achat)</span>
+              </div>
+            )}
+          </div>
+
+          {/* Section Logistique */}
+          <div className="bg-white p-4 rounded-2xl shadow-sm border border-[#E8D5C4]/30 space-y-4">
+            <div className="flex justify-between items-center">
+              <label className="text-[9px] uppercase font-bold text-[#8D7B68] tracking-widest">
+                Logistique Estimée
+              </label>
+              <div className="flex bg-[#FAF7F2] p-1 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setLogMode("poids")}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${logMode === "poids" ? "bg-white text-[#8D7B68] shadow-sm" : "text-[#B8A99A]"}`}
+                >
+                  Au Poids
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogMode("fixe")}
+                  className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${logMode === "fixe" ? "bg-white text-[#8D7B68] shadow-sm" : "text-[#B8A99A]"}`}
+                >
+                  Prix Fixe
+                </button>
+              </div>
+            </div>
+
+            {logMode === "poids" ? (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  value={weightG}
+                  onChange={(e) => setWeightG(e.target.value)}
+                  placeholder="Poids en grammes (ex: 250)"
+                  className="flex-1 p-3 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none focus:bg-white focus:border-[#E8D5C4] border border-transparent"
+                />
+                <span className="text-[10px] text-gray-400 font-bold bg-gray-50 p-3 rounded-xl">2200 DA/Kg</span>
+              </div>
+            ) : (
+              <input
+                type="number"
+                value={fraisFixe}
+                onChange={(e) => setFraisFixe(e.target.value)}
+                placeholder="Montant fixe en DA"
+                className="w-full p-3 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none focus:bg-white focus:border-[#E8D5C4] border border-transparent"
+              />
+            )}
+          </div>
+
+          {/* Résultat Final */}
+          <div className="bg-[#8D7B68] p-5 rounded-2xl text-white shadow-lg relative overflow-hidden">
+            <div className="absolute -right-4 -bottom-4 opacity-10">
+              <Sparkles size={80} />
+            </div>
+            <p className="text-[10px] uppercase tracking-widest font-bold mb-1 opacity-80">
+              Prix de vente conseillé
+            </p>
+            <p className="text-3xl font-serif font-black mb-3">
+              {formatDA(finalPrice)}
+            </p>
+            <div className="flex justify-between items-center pt-3 border-t border-white/20">
+              <span className="text-[11px] font-medium opacity-90">Bénéfice Net Estimé</span>
+              <span className="text-sm font-black text-[#D4B996] bg-white/10 px-3 py-1 rounded-lg">
+                {formatDA(benefit)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
