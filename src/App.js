@@ -3182,6 +3182,7 @@ const OrderModal = ({
                         <option value="En attente">En attente (Chine)</option>
                         <option value="Reçu">Reçu (Algérie)</option>
                         <option value="Livré">Livré cliente</option>
+                        <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
                       </select>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">
@@ -3266,6 +3267,30 @@ const OrderModal = ({
                         </button>
                       </div>
                     </div>
+                            {item.status === "Retourné Fournisseur" && (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 p-3 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
+      <div className="space-y-1">
+        <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
+        <input 
+          type="number" 
+          placeholder="Ex: 400"
+          className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+          value={item.fraisRetourLivreur || ""}
+          onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourLivreur: e.target.value } : oi))}
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Fournisseur (DA)</label>
+        <input 
+          type="number" 
+          placeholder="Ex: 0"
+          className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+          value={item.fraisRetourFournisseur || ""}
+          onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourFournisseur: e.target.value } : oi))}
+        />
+      </div>
+    </div>
+  )}
                   </div>
                 ))}
               </div>
