@@ -2805,7 +2805,6 @@ const OrderModal = ({
     if (hasChanges) {
       setOrderItems(correctedItems);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); 
   // --------------------------------------------------
 
