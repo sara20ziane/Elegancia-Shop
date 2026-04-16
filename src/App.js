@@ -2516,6 +2516,15 @@ const MainApp = ({ user }) => {
           <Globe size={20} />
           <span className="text-[8px] font-bold">Arrivages</span>
         </button>
+          <button
+          onClick={() => setActiveTab("finances")}
+          className={`flex flex-col items-center gap-1 p-2 transition-colors ${
+            activeTab === "finances" ? "text-[#8D7B68]" : "text-[#B8A99A]"
+          }`}
+        >
+          <Euro size={20} />
+          <span className="text-[8px] font-bold">Tréso</span>
+        </button>
       </nav>
 
       {/* --- MODALS --- */}
