@@ -3952,21 +3952,24 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
                   </p>
                 </div>
               </div>
-              <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:border-2 print:bg-white">
-                {items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-start text-xs border-b border-gray-200/50 last:border-0 pb-1.5 last:pb-0"
-                  >
-                    <span className="text-[#4A3F35] font-medium pr-2 truncate">
-                      • {item.name || "Article"}
-                    </span>
-                    <span className="text-gray-400 text-[10px] whitespace-nowrap">
-                      {item.size} / {item.color}
-                    </span>
-                  </div>
-                ))}
-              </div>
+             <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:border-2 print:bg-white">
+  {items.map((item, idx) => (
+    <div
+      key={idx}
+      className="flex justify-between items-start text-xs border-b border-gray-200/50 last:border-0 pb-1.5 last:pb-0"
+    >
+      <span className="text-[#4A3F35] font-medium pr-2 truncate">
+        • {item.name || "Article"}
+      </span>
+      <span className="text-gray-400 text-[10px] whitespace-nowrap">
+        {item.category && (
+          <span className="text-[#8D7B68] font-bold">{item.category} • </span>
+        )}
+        {item.size} / {item.color}
+      </span>
+    </div>
+  ))}
+</div>
             </div>
             <div className="bg-[#8D7B68] print:bg-white print:border-4 print:border-[#8D7B68] p-5 rounded-2xl text-white print:text-[#8D7B68] text-center shadow-md relative overflow-hidden">
               <p className="text-[10px] uppercase tracking-widest font-medium opacity-80 print:opacity-100 mb-1">
