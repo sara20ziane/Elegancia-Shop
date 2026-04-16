@@ -1492,4 +1492,4 @@ const OrderModal = ({ editingOrder, customers, orders, orderItems, setOrderItems
       </div>
     </div>
   );
-};
+}; quand je clique sur plusieurs boutons la fenetre devient blanche
