@@ -3235,30 +3235,61 @@ const OrderModal = ({
 
                     {/* POINT C : LES FRAIS DE RETOUR SONT INTÉGRÉS ICI */}
                     {item.status === "Retourné Fournisseur" && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 p-3 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
-                          <input 
-                            type="number" 
-                            placeholder="Ex: 400"
-                            className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
-                            value={item.fraisRetourLivreur || ""}
-                            onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourLivreur: e.target.value } : oi))}
-                          />
+                      <div className="flex flex-col gap-3 mt-3 p-3 md:p-4 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
+                        
+                        {/* 1. QUI EST RESPONSABLE ET REMBOURSEMENT SHEIN */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-red-100">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest ml-1">Responsable du retour</label>
+                            <select
+                              className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white text-[#4A3F35]"
+                              value={item.responsableRetour || "boutique"}
+                              onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, responsableRetour: e.target.value } : oi))}
+                            >
+                              <option value="boutique">Erreur Yuna's Shop / Shein</option>
+                              <option value="cliente">Changement d'avis (Cliente)</option>
+                            </select>
+                          </div>
+                          
+                          <div className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-red-100">
+                            <label className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Remboursé par Shein ?</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={item.sheinRembourse || false}
+                                onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, sheinRembourse: e.target.checked } : oi))}
+                              />
+                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                            </label>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Fournisseur (DA)</label>
-                          <input 
-                            type="number" 
-                            placeholder="Ex: 0"
-                            className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
-                            value={item.fraisRetourFournisseur || ""}
-                            onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourFournisseur: e.target.value } : oi))}
-                          />
+
+                        {/* 2. LES FRAIS DE RETOUR */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Livreur (DA)</label>
+                            <input 
+                              type="number" 
+                              placeholder="Ex: 400"
+                              className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+                              value={item.fraisRetourLivreur || ""}
+                              onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourLivreur: e.target.value } : oi))}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-red-400 uppercase tracking-widest ml-1">Frais Retour Fournisseur (DA)</label>
+                            <input 
+                              type="number" 
+                              placeholder="Ex: 0"
+                              className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white"
+                              value={item.fraisRetourFournisseur || ""}
+                              onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, fraisRetourFournisseur: e.target.value } : oi))}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}
-
                   </div>
                 ))}
               </div>
