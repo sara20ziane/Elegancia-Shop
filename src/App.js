@@ -1724,10 +1724,26 @@ const OrderModal = ({
 };
 
 const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
-  const [selectedWilaya, setSelectedWilaya] = useState(editingCustomer?.wilaya || "");
-  const [communes, setCommunes] = useState(editingCustomer?.wilaya ? SUGGESTED_COMMUNES[editingCustomer.wilaya] || [] : []);
-  const [isCustomCommune, setIsCustomCommune] = useState(editingCustomer?.wilaya && !SUGGESTED_COMMUNES[editingCustomer.wilaya]?.includes(editingCustomer.commune));
+  // États sécurisés et contrôlés pour éviter tout blocage ou page blanche
+  const [wilaya, setWilaya] = useState(editingCustomer?.wilaya || "");
+  const [commune, setCommune] = useState(editingCustomer?.commune || "");
+  const [isCustomCommune, setIsCustomCommune] = useState(false);
   const [deliveryMode, setDeliveryMode] = useState(editingCustomer?.deliveryMode || "domicile");
+  const [platform, setPlatform] = useState(editingCustomer?.platform || "instagram");
+  const [wallet, setWallet] = useState(editingCustomer?.walletDA || 0);
+
+  // Sécurité anti-crash pour l'initialisation des communes
+  const availableCommunes = wilaya ? (SUGGESTED_COMMUNES[wilaya] || []) : [];
+
+  useEffect(() => {
+    // Vérification au chargement pour savoir si la commune est dans la liste ou si c'est une saisie libre
+    if (editingCustomer?.wilaya && editingCustomer?.commune) {
+      const sugg = SUGGESTED_COMMUNES[editingCustomer.wilaya] || [];
+      if (sugg.length > 0 && !sugg.includes(editingCustomer.commune)) {
+        setIsCustomCommune(true);
+      }
+    }
+  }, [editingCustomer]);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1000] flex items-end md:items-center justify-center p-0 md:p-4 overflow-hidden pt-10">
@@ -1735,67 +1751,78 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
         <ModalHeader title={editingCustomer ? "Modifier Cliente" : "Nouvelle Cliente"} onClose={onClose} />
         <form onSubmit={handleSaveCustomer} className="flex-1 flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pb-4 pr-1">
+
+            {/* Plateforme */}
             <div className="space-y-2">
               <label className="text-[9px] uppercase font-bold text-[#B8A99A] tracking-wider ml-1">Plateforme</label>
               <div className="grid grid-cols-4 gap-2 md:gap-3">
                 {["instagram","facebook","whatsapp","direct"].map((plat) => (
-                  <label key={plat} className="flex flex-col items-center p-3 rounded-xl md:rounded-2xl bg-[#FAF7F2]/50 border-2 border-transparent has-[:checked]:border-[#E8D5C4] has-[:checked]:bg-white cursor-pointer transition-all">
-                    <input type="radio" name="platform" value={plat} defaultChecked={editingCustomer?.platform === plat || (!editingCustomer && plat === "instagram")} className="hidden" />
+                  <label key={plat} onClick={() => setPlatform(plat)} className={`flex flex-col items-center p-3 rounded-xl md:rounded-2xl border-2 cursor-pointer transition-all ${platform === plat ? "bg-white border-[#E8D5C4] shadow-sm" : "bg-[#FAF7F2]/50 border-transparent"}`}>
+                    <input type="radio" name="platform" value={plat} checked={platform === plat} readOnly className="hidden" />
                     <PlatformIcon type={plat} size={20} />
-                    <span className="text-[8px] uppercase font-bold mt-2 text-[#8D7B68] truncate w-full text-center">{plat}</span>
+                    <span className={`text-[8px] uppercase font-bold mt-2 truncate w-full text-center ${platform === plat ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}>{plat}</span>
                   </label>
                 ))}
               </div>
             </div>
+
+            {/* Nom */}
             <div className="space-y-1">
               <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Nom complet</label>
-              <input autoFocus name="name" defaultValue={editingCustomer?.name} required className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
+              <input autoFocus name="name" defaultValue={editingCustomer?.name || ""} required className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
             </div>
+
+            {/* Téléphones */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Téléphone 1</label>
-                <input name="phone" defaultValue={editingCustomer?.phone} required type="tel" className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
+                <input name="phone" defaultValue={editingCustomer?.phone || ""} required type="tel" className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Téléphone 2</label>
-                <input name="phone2" defaultValue={editingCustomer?.phone2} type="tel" placeholder="Optionnel" className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-medium text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
+                <input name="phone2" defaultValue={editingCustomer?.phone2 || ""} type="tel" placeholder="Optionnel" className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-medium text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]" />
               </div>
             </div>
+
+            {/* Wilaya & Commune */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Wilaya</label>
-                <select name="wilaya" required value={selectedWilaya} onChange={(e) => { setSelectedWilaya(e.target.value); const sugg = SUGGESTED_COMMUNES[e.target.value] || []; setCommunes(sugg); setIsCustomCommune(sugg.length === 0); }} className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]">
+                <select name="wilaya" required value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(""); setIsCustomCommune(false); }} className="w-full p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]">
                   <option value="">Sélectionner</option>
                   {WILAYAS_58.map((w) => <option key={w} value={w}>{w}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Commune</label>
-                {communes.length > 0 && !isCustomCommune ? (
+                {availableCommunes.length > 0 && !isCustomCommune ? (
                   <div className="flex gap-2">
-                    <select name="commune" required defaultValue={editingCustomer?.commune} onChange={(e) => { if (e.target.value === "custom") setIsCustomCommune(true); }} className="flex-1 p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]">
-                      {communes.map((c, idx) => <option key={`${c}-${idx}`} value={c}>{c}</option>)}
+                    <select name="commune" required value={commune} onChange={(e) => { if (e.target.value === "custom") { setIsCustomCommune(true); setCommune(""); } else { setCommune(e.target.value); } }} className="flex-1 p-3.5 rounded-xl bg-gray-50 text-sm font-bold text-[#4A3F35] outline-none border border-transparent focus:border-[#E8D5C4]">
+                      <option value="">Choisir...</option>
+                      {availableCommunes.map((c) => <option key={c} value={c}>{c}</option>)}
                       <option value="custom">Autre...</option>
                     </select>
-                    <button type="button" onClick={() => setIsCustomCommune(true)} className="p-3 text-[#D4B996] bg-gray-50 rounded-xl"><RotateCcw size={16} /></button>
+                    <button type="button" onClick={() => setIsCustomCommune(true)} className="p-3 text-[#D4B996] bg-gray-50 rounded-xl hover:bg-gray-200"><RotateCcw size={16} /></button>
                   </div>
                 ) : (
                   <div className="flex gap-2">
-                    <input name="commune" placeholder="Saisir commune" defaultValue={editingCustomer?.commune} required className="flex-1 p-3.5 rounded-xl bg-white border border-[#E8D5C4] text-sm font-bold text-[#8D7B68] outline-none" />
-                    {communes.length > 0 && <button type="button" onClick={() => setIsCustomCommune(false)} className="p-3 text-gray-400 bg-gray-50 rounded-xl"><RotateCcw size={16} /></button>}
+                    <input name="commune" placeholder="Saisir commune" value={commune} onChange={(e) => setCommune(e.target.value)} required className="flex-1 p-3.5 rounded-xl bg-white border border-[#E8D5C4] text-sm font-bold text-[#8D7B68] outline-none" />
+                    {availableCommunes.length > 0 && <button type="button" onClick={() => setIsCustomCommune(false)} className="p-3 text-gray-400 bg-gray-50 rounded-xl hover:bg-gray-200"><RotateCcw size={16} /></button>}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Livraison */}
             <div className="space-y-2">
               <label className="text-[9px] uppercase font-bold text-[#B8A99A] tracking-wider ml-1">Livraison</label>
               <div className="grid grid-cols-2 gap-2 p-1.5 bg-[#FAF7F2]/80 rounded-2xl border border-[#E8D5C4]/30">
-                <label className="flex items-center justify-center gap-2 p-3 rounded-xl cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:text-[#8D7B68] text-[#B8A99A] text-xs font-bold border border-transparent has-[:checked]:border-[#E8D5C4]/50">
-                  <input type="radio" name="deliveryMode" value="domicile" defaultChecked={deliveryMode === "domicile"} onChange={() => setDeliveryMode("domicile")} className="hidden" />
+                <label onClick={() => setDeliveryMode("domicile")} className={`flex items-center justify-center gap-2 p-3 rounded-xl cursor-pointer transition-all text-xs font-bold border ${deliveryMode === "domicile" ? "bg-white shadow-sm text-[#8D7B68] border-[#E8D5C4]/50" : "text-[#B8A99A] border-transparent"}`}>
+                  <input type="radio" name="deliveryMode" value="domicile" checked={deliveryMode === "domicile"} readOnly className="hidden" />
                   <Home size={14} /> Domicile
                 </label>
-                <label className="flex items-center justify-center gap-2 p-3 rounded-xl cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:shadow-sm has-[:checked]:text-[#8D7B68] text-[#B8A99A] text-xs font-bold border border-transparent has-[:checked]:border-[#E8D5C4]/50">
-                  <input type="radio" name="deliveryMode" value="stopdesk" defaultChecked={deliveryMode === "stopdesk"} onChange={() => setDeliveryMode("stopdesk")} className="hidden" />
+                <label onClick={() => setDeliveryMode("stopdesk")} className={`flex items-center justify-center gap-2 p-3 rounded-xl cursor-pointer transition-all text-xs font-bold border ${deliveryMode === "stopdesk" ? "bg-white shadow-sm text-[#8D7B68] border-[#E8D5C4]/50" : "text-[#B8A99A] border-transparent"}`}>
+                  <input type="radio" name="deliveryMode" value="stopdesk" checked={deliveryMode === "stopdesk"} readOnly className="hidden" />
                   <Store size={14} /> Stopdesk
                 </label>
               </div>
@@ -1804,15 +1831,18 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
                   <label className="text-[9px] uppercase font-bold text-[#D4B996] ml-1">Bureau Stopdesk</label>
                   <div className="relative mt-1">
                     <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#D4B996]" />
-                    <input name="stopdeskName" placeholder="Ex: Yalidine Kouba" defaultValue={editingCustomer?.stopdeskName} required className="w-full p-3.5 pl-12 rounded-xl bg-white border border-[#E8D5C4] text-sm font-bold text-[#8D7B68] outline-none" />
+                    <input name="stopdeskName" placeholder="Ex: Yalidine Kouba" defaultValue={editingCustomer?.stopdeskName || ""} required className="w-full p-3.5 pl-12 rounded-xl bg-white border border-[#E8D5C4] text-sm font-bold text-[#8D7B68] outline-none" />
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Portefeuille Contrôlé */}
             <div className="space-y-1 mt-4 p-3 bg-green-50/30 rounded-xl border border-green-100">
               <label className="text-[9px] uppercase font-bold text-green-600 ml-1">Correction Portefeuille (DA)</label>
-              <input name="walletDA" type="number" defaultValue={editingCustomer?.walletDA || 0} placeholder="Ex: 0 pour vider" className="w-full p-3.5 rounded-xl bg-white text-sm font-bold text-green-600 outline-none border border-transparent focus:border-green-200 shadow-sm" />
+              <input name="walletDA" type="number" value={wallet} onChange={(e) => setWallet(e.target.value)} placeholder="Ex: 0 pour vider" className="w-full p-3.5 rounded-xl bg-white text-sm font-bold text-green-600 outline-none border border-transparent focus:border-green-200 shadow-sm" />
             </div>
+
           </div>
           <div className="shrink-0 pt-4">
             <button type="submit" className="w-full py-4 bg-[#8D7B68] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg">Enregistrer la cliente</button>
