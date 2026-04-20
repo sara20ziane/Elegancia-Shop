@@ -3750,7 +3750,7 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
               )}
             </div>
 
-            {/* 👇 LA CASE PORTEFEUILLE CORRIGÉE (SORTIE DU IF STOPDESK) 👇 */}
+            {/* 👇 LA CASE PORTEFEUILLE EST MAINTENANT LIBRE ET VISIBLE 👇 */}
             <div className="space-y-1 mt-4 p-3 bg-green-50/30 rounded-xl border border-green-100">
               <label className="text-[9px] uppercase font-bold text-green-600 ml-1">
                 Correction Portefeuille (DA)
@@ -3763,7 +3763,7 @@ const CustomerModal = ({ editingCustomer, handleSaveCustomer, onClose }) => {
                 className="w-full p-3.5 rounded-xl bg-white text-sm font-bold text-green-600 outline-none border border-transparent focus:border-green-200 shadow-sm"
               />
             </div>
-
+            
           </div>
           <div className="shrink-0 pt-4">
             <button
@@ -4321,7 +4321,6 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
 const ReceiptModal = ({ order, onClose, formatDA }) => {
   const items = order.items || [];
   
-  // --- NOUVEAU CALCUL INTELLIGENT ---
   let calculatedSubtotal = 0;
   items.forEach(item => {
     if (item.status === "Retourné Fournisseur") {
@@ -4413,27 +4412,33 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               <span>Sous-total</span>
               <span>{formatDA(subtotal)}</span>
             </div>
+            
             {discount > 0 && (
               <div className="flex justify-between text-green-600/80 font-bold print:text-black">
                 <span>Remise commerciale</span>
                 <span>- {formatDA(discount)}</span>
               </div>
             )}
+
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black print:font-medium">
               <span>Livraison</span>
               <span>{formatDA(shipping)}</span>
             </div>
+            
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black">
               <span>Avance perçue</span>
               <span>- {formatDA(advance)}</span>
             </div>
+            
             {refund > 0 && (
               <div className="flex justify-between text-red-400 font-bold print:text-black">
                 <span>Remboursement</span>
                 <span>+ {formatDA(refund)}</span>
               </div>
             )}
+            
             <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50 print:bg-black print:opacity-100 print:my-2"></div>
+            
             <div className="flex justify-between font-serif font-bold text-lg md:text-xl text-[#8D7B68] print:text-black">
               <span>Reste à payer</span>
               <span>{total > 0 ? formatDA(total) : "0.00 DA"}</span>
