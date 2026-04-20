@@ -941,7 +941,7 @@ const MainApp = ({ user }) => {
         0
       );
 
-      // --- CORRECTION : VERROUILLAGE DES FRAIS DE RETOUR ---
+      // --- VERROUILLAGE DES FRAIS DE RETOUR (pour éviter les doublons) ---
       let finalItems = [...t.processed];
       for (let i = 0; i < finalItems.length; i++) {
         let item = finalItems[i];
@@ -960,7 +960,6 @@ const MainApp = ({ user }) => {
               date: new Date().toISOString().split('T')[0]
             });
           }
-          // Le verrou : on marque cet article pour que le système sache que c'est déjà compté !
           finalItems[i].fraisRetourComptabilises = true;
         }
       }
@@ -969,7 +968,7 @@ const MainApp = ({ user }) => {
         orderNumber: formData.get("orderNumber"),
         customerId: customerId,
         customerName: customer?.name || "Inconnue",
-        items: finalItems, // On utilise nos items sécurisés ici
+        items: finalItems,
         payments: orderPayments,
         shippingNational: parseFloat(shippingNational) || 0,
         advancePayment: totalAdvance,
@@ -4189,39 +4188,45 @@ const PriceCalculatorModal = ({ onClose, currencyRates, formatDA }) => {
 const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
   const customer = customers.find((c) => c.id === order.customerId);
   const items = order.items || [];
-  const totalWeight =
-    items.reduce((sum, item) => sum + (parseFloat(item.weightG) || 0), 0) /
-    1000;
-  const itemCount = items.length;
-  const subtotal = items.reduce(
-    (sum, i) => sum + (parseFloat(i.priceVente) || 0),
-    0
-  );
+  
+  // --- NOUVEAU CALCUL INTELLIGENT ---
+  let calculatedSubtotal = 0;
+  let validItemCount = 0;
+  let validWeight = 0;
+
+  items.forEach(item => {
+    if (item.status === "Retourné Fournisseur") {
+       if (item.responsableRetour === "cliente") {
+          calculatedSubtotal += (parseFloat(item.fraisRetourLivreur) || 0) + (parseFloat(item.fraisRetourFournisseur) || 0);
+       }
+    } else {
+       calculatedSubtotal += (parseFloat(item.priceVente) || 0);
+       validItemCount += 1;
+       validWeight += (parseFloat(item.weightG) || 0);
+    }
+  });
+
+  const totalWeight = validWeight / 1000;
+  const itemCount = validItemCount;
+  const subtotal = calculatedSubtotal;
+  
   const shipping = parseFloat(order.shippingNational) || 0;
   const advance = parseFloat(order.advancePayment) || 0;
+  const discount = parseFloat(order.discount) || 0;
+  const refund = parseFloat(order.refundAmount) || 0;
 
-  const isFullyPaidStatus =
-    order.status === "Payée" || order.status === "Payée et livrée";
-  const totalToPay = isFullyPaidStatus
-    ? 0
-    : Math.max(0, subtotal + shipping - advance);
+  const isFullyPaidStatus = order.status === "Payée" || order.status === "Payée et livrée";
+  const totalToPay = isFullyPaidStatus ? 0 : Math.max(0, subtotal + shipping - discount - advance + refund);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
-      
       <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
         
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm"
-          >
+          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm">
             <Printer size={18} />
           </button>
-          <button
-            onClick={onClose}
-            className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm"
-          >
+          <button onClick={onClose} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm">
             <X size={18} />
           </button>
         </div>
@@ -4229,93 +4234,63 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
         <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:overflow-visible print:pb-0 print:h-auto">
           <div className="bg-[#FAF7F2] p-8 pt-10 border-b border-[#E8D5C4]/40 text-center relative print:bg-white print:border-b-2 print:border-black print:p-4">
             <Truck size={32} className="mx-auto mb-3 text-[#8D7B68] print:text-black" />
-            <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">
-              BORDEREAU
-            </h2>
-            <p className="text-[10px] uppercase tracking-widest text-[#B8A99A] font-bold print:text-gray-800">
-              Commande #{order.orderNumber}
-            </p>
+            <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">BORDEREAU</h2>
+            <p className="text-[10px] uppercase tracking-widest text-[#B8A99A] font-bold print:text-gray-800">Commande #{order.orderNumber}</p>
           </div>
           
           <div className="p-8 space-y-6 print:p-4 print:space-y-4">
             <div>
-              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">
-                Destinataire
-              </h4>
+              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">Destinataire</h4>
               <div className="space-y-1.5 text-sm">
-                <p className="font-bold text-[#4A3F35] text-base print:text-black">
-                  {order.customerName}
-                </p>
+                <p className="font-bold text-[#4A3F35] text-base print:text-black">{order.customerName}</p>
                 <p className="text-[#8D7B68] font-medium flex items-center gap-2 print:text-black">
-                  <Phone size={12} /> {customer?.phone}{" "}
-                  {customer?.phone2 && `/ ${customer?.phone2}`}
+                  <Phone size={12} /> {customer?.phone} {customer?.phone2 && `/ ${customer?.phone2}`}
                 </p>
                 <div className="bg-gray-50 p-3 rounded-xl mt-2 text-xs text-gray-600 border border-gray-100 print:bg-white print:border print:border-black print:text-black print:p-2">
-                  <p className="font-bold text-[#4A3F35] mb-1 print:text-black">
-                    {customer?.wilaya} - {customer?.commune}
-                  </p>
+                  <p className="font-bold text-[#4A3F35] mb-1 print:text-black">{customer?.wilaya} - {customer?.commune}</p>
                   <p className="flex items-center gap-1.5 font-bold">
                     <MapPin size={12} className="text-[#D4B996] print:text-black" />{" "}
-                    {customer?.deliveryMode === "stopdesk"
-                      ? `Stopdesk: ${customer?.stopdeskName}`
-                      : "Livraison à Domicile"}
+                    {customer?.deliveryMode === "stopdesk" ? `Stopdesk: ${customer?.stopdeskName}` : "Livraison à Domicile"}
                   </p>
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">
-                Détails du colis
-              </h4>
+              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">Détails du colis</h4>
               <div className="flex gap-4 mb-4">
                 <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:bg-white print:border print:border-black print:p-2">
-                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-gray-800">
-                    Articles
-                  </p>
-                  <p className="font-black text-[#8D7B68] text-lg print:text-black">
-                    {itemCount}
-                  </p>
+                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-gray-800">Articles Valides</p>
+                  <p className="font-black text-[#8D7B68] text-lg print:text-black">{itemCount}</p>
                 </div>
                 <div className="flex-1 bg-[#FAF7F2]/50 p-3 rounded-xl border border-[#E8D5C4]/30 text-center print:bg-white print:border print:border-black print:p-2">
-                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-gray-800">
-                    Poids Total
-                  </p>
-                  <p className="font-black text-[#8D7B68] text-lg print:text-black">
-                    {totalWeight.toFixed(2)} <span className="text-xs">Kg</span>
-                  </p>
+                  <p className="text-[10px] text-[#B8A99A] uppercase font-bold mb-1 print:text-gray-800">Poids Total</p>
+                  <p className="font-black text-[#8D7B68] text-lg print:text-black">{totalWeight.toFixed(2)} <span className="text-xs">Kg</span></p>
                 </div>
               </div>
 
               <div className="space-y-2 bg-gray-50 p-3 rounded-xl border border-gray-100 print:bg-white print:border print:border-black print:p-2">
-                {items.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-col border-b border-gray-200/50 last:border-0 pb-2 last:pb-0 print:border-gray-300"
-                  >
-                    <div className="flex justify-between items-start text-xs">
-                      <span className="text-[#4A3F35] font-bold pr-2 print:text-black">
-                        • {item.name || "Article"}
-                      </span>
-                      <span className="text-gray-500 text-[10px] whitespace-nowrap font-bold print:text-black">
-                        {item.size} / {item.color}
-                      </span>
+                {items.map((item, idx) => {
+                  const isReturned = item.status === "Retourné Fournisseur";
+                  return (
+                    <div key={idx} className={`flex flex-col border-b border-gray-200/50 last:border-0 pb-2 last:pb-0 print:border-gray-300 ${isReturned ? 'opacity-50' : ''}`}>
+                      <div className="flex justify-between items-start text-xs">
+                        <span className={`text-[#4A3F35] font-bold pr-2 print:text-black ${isReturned ? 'line-through' : ''}`}>
+                          • {item.name || "Article"} {isReturned && <span className="text-red-500 text-[10px] ml-1 no-underline">(Annulé)</span>}
+                        </span>
+                        <span className="text-gray-500 text-[10px] whitespace-nowrap font-bold print:text-black">
+                          {item.size} / {item.color}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-[#B8A99A] ml-2.5 mt-0.5 font-bold uppercase tracking-wider print:text-gray-600">
-                      {item.category || "Catégorie non spécifiée"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             <div className="bg-[#8D7B68] p-5 rounded-2xl text-white text-center shadow-md relative overflow-hidden print:bg-white print:border-2 print:border-black print:text-black print:shadow-none print:p-3">
-              <p className="text-[10px] uppercase tracking-widest font-bold mb-1 print:text-gray-800">
-                Montant à encaisser à la livraison
-              </p>
-              <p className="text-3xl font-serif font-black print:text-black">
-                {totalToPay > 0 ? formatDA(totalToPay) : "PAYÉ"}
-              </p>
+              <p className="text-[10px] uppercase tracking-widest font-bold mb-1 print:text-gray-800">Montant à encaisser</p>
+              <p className="text-3xl font-serif font-black print:text-black">{totalToPay > 0 ? formatDA(totalToPay) : "PAYÉ"}</p>
             </div>
           </div>
         </div>
@@ -4326,89 +4301,91 @@ const DeliverySlipModal = ({ order, customers, onClose, formatDA }) => {
 
 const ReceiptModal = ({ order, onClose, formatDA }) => {
   const items = order.items || [];
-  const subtotal = items.reduce(
-    (sum, i) => sum + (parseFloat(i.priceVente) || 0),
-    0
-  );
+  
+  // --- NOUVEAU CALCUL INTELLIGENT ---
+  let calculatedSubtotal = 0;
+  items.forEach(item => {
+    if (item.status === "Retourné Fournisseur") {
+       if (item.responsableRetour === "cliente") {
+          calculatedSubtotal += (parseFloat(item.fraisRetourLivreur) || 0) + (parseFloat(item.fraisRetourFournisseur) || 0);
+       }
+    } else {
+       calculatedSubtotal += (parseFloat(item.priceVente) || 0);
+    }
+  });
+  const subtotal = calculatedSubtotal;
+
   const shipping = parseFloat(order.shippingNational) || 0;
   const advance = parseFloat(order.advancePayment) || 0;
-  
-  // 👇 1. ON AJOUTE LES VARIABLES ICI 👇
   const discount = parseFloat(order.discount) || 0;
   const refund = parseFloat(order.refundAmount) || 0;
 
-  const isFullyPaidStatus =
-    order.status === "Payée" || order.status === "Payée et livrée";
-    
-  // 👇 2. ON MODIFIE LE CALCUL DU TOTAL 👇
-  const total = isFullyPaidStatus
-    ? 0
-    : Math.max(0, subtotal + shipping - discount - advance + refund);
+  const isFullyPaidStatus = order.status === "Payée" || order.status === "Payée et livrée";
+  const total = isFullyPaidStatus ? 0 : Math.max(0, subtotal + shipping - discount - advance + refund);
 
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
-      
       <div className="bg-[#FAF7F2] w-full max-w-md rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:bg-white print:overflow-visible">
         
         <div className="absolute top-4 right-4 flex gap-2 z-20 print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm"
-          >
+          <button onClick={() => window.print()} className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm">
             <Printer size={18} />
           </button>
-          <button
-            onClick={onClose}
-            className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm"
-          >
+          <button onClick={onClose} className="p-2 bg-white/90 backdrop-blur-md rounded-full hover:bg-white text-[#8D7B68] transition-colors shadow-sm">
             <X size={18} />
           </button>
         </div>
 
         <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-4 print:h-auto print:pt-4">
           <div className="mb-6 md:mb-8">
-            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">
-              YUNA'S SHOP
-            </h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">YUNA'S SHOP</h2>
             <div className="h-px w-8 bg-[#D4B996] mx-auto mb-2 print:bg-black"></div>
-            <p className="text-[8px] uppercase tracking-[0.4em] text-[#B8A99A] font-bold print:text-black">
-              Bon de Commande
-            </p>
+            <p className="text-[8px] uppercase tracking-[0.4em] text-[#B8A99A] font-bold print:text-black">Bon de Commande</p>
           </div>
 
           <div className="bg-white p-4 md:p-5 rounded-2xl border border-[#E8D5C4]/30 text-left mb-6 md:mb-8 relative overflow-hidden shadow-sm print:bg-white print:border print:border-black print:shadow-none print:p-4">
             <div className="absolute top-0 right-0 w-12 h-12 md:w-16 md:h-16 bg-[#FAF7F2] rounded-bl-full -mr-6 -mt-6 md:-mr-8 md:-mt-8 print:hidden"></div>
-            <p className="text-xs font-bold text-[#8D7B68] mb-1 print:text-black">
-              {order.customerName}
-            </p>
-            <p className="text-[9px] text-[#B8A99A] uppercase tracking-wider mb-3 md:mb-4 print:text-gray-800 font-bold">
-              CMD #{order.orderNumber}
-            </p>
+            <p className="text-xs font-bold text-[#8D7B68] mb-1 print:text-black">{order.customerName}</p>
+            <p className="text-[9px] text-[#B8A99A] uppercase tracking-wider mb-3 md:mb-4 print:text-gray-800 font-bold">CMD #{order.orderNumber}</p>
             
             <div className="space-y-3 print:space-y-2">
-              {items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex flex-col border-b border-gray-100 last:border-0 pb-2 last:pb-0 print:border-gray-300"
-                >
-                  <div className="flex justify-between items-start text-xs">
-                    <span className="text-[#4A3F35] font-bold pr-2 print:text-black">
-                      {item.name || "Article"}
-                    </span>
-                    <span className="font-black text-[#8D7B68] print:text-black whitespace-nowrap">
-                      {formatDA(item.priceVente)}
-                    </span>
+              {items.map((item, idx) => {
+                const isReturned = item.status === "Retourné Fournisseur";
+                const isCustomerFault = isReturned && item.responsableRetour === "cliente";
+                const customerFees = isCustomerFault ? (parseFloat(item.fraisRetourLivreur) || 0) + (parseFloat(item.fraisRetourFournisseur) || 0) : 0;
+
+                return (
+                  <div key={idx} className={`flex flex-col border-b border-gray-100 last:border-0 pb-2 last:pb-0 print:border-gray-300 ${isReturned ? 'opacity-60' : ''}`}>
+                    <div className="flex justify-between items-start text-xs">
+                      <span className={`text-[#4A3F35] font-bold pr-2 print:text-black ${isReturned ? 'line-through' : ''}`}>
+                        {item.name || "Article"} {isReturned && <span className="text-red-400 text-[9px] ml-1 no-underline uppercase">Annulé</span>}
+                      </span>
+                      <div className="text-right">
+                        {isReturned ? (
+                          <div className="flex flex-col items-end">
+                            <span className="font-bold text-gray-400 line-through text-[10px] print:text-gray-500">
+                              {formatDA(item.priceVente)}
+                            </span>
+                            {customerFees > 0 && (
+                              <span className="font-black text-red-400 text-[10px] mt-0.5 print:text-black">
+                                Frais: {formatDA(customerFees)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="font-black text-[#8D7B68] print:text-black whitespace-nowrap">
+                            {formatDA(item.priceVente)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center mt-1 text-[10px]">
+                      <span className="text-[#B8A99A] uppercase font-bold tracking-wider print:text-gray-600">{item.category || "Catégorie"}</span>
+                      <span className="text-gray-400 font-medium print:text-gray-600">{item.size} / {item.color}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center mt-1 text-[10px]">
-                    <span className="text-[#B8A99A] uppercase font-bold tracking-wider print:text-gray-600">
-                      {item.category || "Catégorie"}
-                    </span>
-                    <span className="text-gray-400 font-medium print:text-gray-600">
-                      {item.size} / {item.color}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -4417,34 +4394,27 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
               <span>Sous-total</span>
               <span>{formatDA(subtotal)}</span>
             </div>
-            
             {discount > 0 && (
               <div className="flex justify-between text-green-600/80 font-bold print:text-black">
                 <span>Remise commerciale</span>
                 <span>- {formatDA(discount)}</span>
               </div>
             )}
-
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black print:font-medium">
               <span>Livraison</span>
               <span>{formatDA(shipping)}</span>
             </div>
-            
             <div className="flex justify-between text-[#8D7B68]/70 font-bold print:text-black">
               <span>Avance perçue</span>
               <span>- {formatDA(advance)}</span>
             </div>
-            
-            {/* 👇 LA CORRECTION EST ICI : IL MANQUAIT LE ')}' A LA FIN 👇 */}
             {refund > 0 && (
               <div className="flex justify-between text-red-400 font-bold print:text-black">
                 <span>Remboursement</span>
                 <span>+ {formatDA(refund)}</span>
               </div>
             )}
-            
             <div className="h-px bg-[#E8D5C4] my-2 md:my-3 opacity-50 print:bg-black print:opacity-100 print:my-2"></div>
-            
             <div className="flex justify-between font-serif font-bold text-lg md:text-xl text-[#8D7B68] print:text-black">
               <span>Reste à payer</span>
               <span>{total > 0 ? formatDA(total) : "0.00 DA"}</span>
@@ -4452,9 +4422,7 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
           </div>
 
           <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-[#E8D5C4]/30 print:border-black print:mt-4 print:pt-4">
-            <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-bold print:text-black">
-              Merci pour votre confiance ✨
-            </p>
+            <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-bold print:text-black">Merci pour votre confiance ✨</p>
           </div>
         </div>
       </div>
