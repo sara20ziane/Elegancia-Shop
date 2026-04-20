@@ -266,15 +266,18 @@ const formatDA = (val) =>
 const calculateReste = (order, customerCredit = 0) => {
   if (order.status === "Payée" || order.status === "Payée et livrée") return 0;
   
-  // Total = Articles (non retournés) + Frais de livraison
+  // Total = Articles (non retournés)
   const totalItems = (order.items || []).reduce((sum, item) => {
     return sum + (item.status === "Retourné Fournisseur" ? 0 : (parseFloat(item.priceVente) || 0));
   }, 0);
 
-  const totalOrder = totalItems + (parseFloat(order.shippingNational) || 0);
-  const totalAdvance = parseFloat(order.advancePayment) || 0;
+  // Total Commande = Articles + Livraison - Remise
+  const totalOrder = totalItems + (parseFloat(order.shippingNational) || 0) - (parseFloat(order.discount) || 0);
   
-  return Math.max(0, totalOrder - totalAdvance - customerCredit);
+  // Payé net = Avances - Remboursements
+  const netPaid = (parseFloat(order.advancePayment) || 0) - (parseFloat(order.refundAmount) || 0);
+  
+  return Math.max(0, totalOrder - netPaid - customerCredit);
 };
 
 // --- UI COMPONENTS ---
@@ -600,6 +603,8 @@ const MainApp = ({ user }) => {
   const [orderNumber, setOrderNumber] = useState("");
   const [arrivageNumber, setArrivageNumber] = useState("");
   const [arrivageDate, setArrivageDate] = useState("");
+  const [orderDiscount, setOrderDiscount] = useState(0);
+  const [orderRefundAmount, setOrderRefundAmount] = useState(0);
 
   useEffect(() => {
     const path = (coll) =>
@@ -1653,6 +1658,8 @@ const MainApp = ({ user }) => {
                     setOrderPayments([]);
                     setShippingNational(0);
                     setOrderStatus("A commander");
+                    setOrderDiscount(0);
+                    setOrderRefundAmount(0);
                     setShowAddOrder(true);
                     setEditingOrder(null);
                   }}
