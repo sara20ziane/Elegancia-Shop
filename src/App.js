@@ -2128,6 +2128,25 @@ const MainApp = ({ user }) => {
                     })
                     .map((c) => (
                       <tr key={c.id} className="group hover:bg-[#FAF7F2]/50">
+                        {/* --- COLONNE 1 : CLIENTE --- */}
+                        <td className="p-5">
+                          <div className="flex items-center gap-3">
+                            <PlatformIcon type={c.platform} size={16} />
+                            <span className="font-bold text-[#8D7B68] text-sm">
+                              {c.name}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* --- COLONNE 2 : CONTACT --- */}
+                        <td className="p-5 space-y-1">
+                          <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
+                            <Phone size={12} className="text-[#D4B996]" />{" "}
+                            {c.phone}
+                          </div>
+                        </td>
+
+                        {/* --- COLONNE 3 : LIVRAISON --- */}
                         <td className="p-5 space-y-1">
                           <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
                             {c.deliveryMode === "domicile" ? (
@@ -2146,7 +2165,9 @@ const MainApp = ({ user }) => {
                             {c.wilaya} - {c.commune}
                           </div>
                         </td>
-                            <td className="p-5">
+
+                        {/* --- COLONNE 4 : PORTEFEUILLE --- */}
+                        <td className="p-5">
                           {c.walletDA > 0 ? (
                             <span className="px-3 py-1 bg-green-50 text-green-600 border border-green-200 rounded-lg text-[10px] font-black">
                               {formatDA(c.walletDA)}
@@ -2155,24 +2176,8 @@ const MainApp = ({ user }) => {
                             <span className="text-gray-300 text-[10px] font-bold">0 DA</span>
                           )}
                         </td>
-                        <td className="p-5 space-y-1">
-                          <div className="flex items-center gap-2 text-[#4A3F35] font-medium">
-                            {c.deliveryMode === "domicile" ? (
-                              <>
-                                <Home size={12} className="text-[#D4B996]" />{" "}
-                                Domicile
-                              </>
-                            ) : (
-                              <>
-                                <Store size={12} className="text-[#D4B996]" />{" "}
-                                {c.stopdeskName || "Stopdesk"}
-                              </>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-gray-500 pl-5">
-                            {c.wilaya} - {c.commune}
-                          </div>
-                        </td>
+
+                        {/* --- COLONNE 5 : ACTIONS --- */}
                         <td className="p-5 text-right">
                           <div className="flex justify-end gap-4 opacity-0 group-hover:opacity-100 transition-all">
                             <button
@@ -2212,7 +2217,6 @@ const MainApp = ({ user }) => {
             </div>
           </div>
         )}
-
         {activeTab === "arrivages" && (
           <div className="space-y-4 animate-in slide-in-from-bottom-4">
             <div className="bg-[#FAF7F2] p-4 rounded-2xl md:rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm flex justify-between items-center mb-4">
