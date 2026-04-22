@@ -88,64 +88,64 @@ const WILAYAS_58 = [
 ];
 
 const DELIVERY_TARIFFS = {
-  Alger: { dom: 500, stop: 400 },
-  Blida: { dom: 650, stop: 500 },
-  Boumerdès: { dom: 650, stop: 500 },
-  Tipaza: { dom: 650, stop: 500 },
-  Chlef: { dom: 800, stop: 550 },
-  "Oum El Bouaghi": { dom: 800, stop: 550 },
-  Batna: { dom: 800, stop: 550 },
-  Béjaïa: { dom: 800, stop: 550 },
-  Bouira: { dom: 800, stop: 550 },
-  Tlemcen: { dom: 800, stop: 550 },
-  Tiaret: { dom: 800, stop: 550 },
-  "Tizi Ouzou": { dom: 800, stop: 550 },
-  Sétif: { dom: 800, stop: 550 },
-  Saïda: { dom: 800, stop: 550 },
-  Skikda: { dom: 800, stop: 550 },
-  "Sidi Bel Abbès": { dom: 800, stop: 550 },
-  Annaba: { dom: 800, stop: 550 },
-  Guelma: { dom: 800, stop: 550 },
-  Constantine: { dom: 800, stop: 550 },
-  Médéa: { dom: 800, stop: 550 },
-  Mostaganem: { dom: 800, stop: 550 },
-  "M'Sila": { dom: 800, stop: 550 },
-  Mascara: { dom: 800, stop: 550 },
-  Oran: { dom: 800, stop: 550 },
-  "Bordj Bou Arreridj": { dom: 800, stop: 550 },
-  "El Tarf": { dom: 800, stop: 550 },
-  Tissemsilt: { dom: 800, stop: 550 },
-  Khenchela: { dom: 800, stop: 550 },
-  "Souk Ahras": { dom: 800, stop: 550 },
-  Mila: { dom: 800, stop: 550 },
-  "Aïn Defla": { dom: 800, stop: 550 },
-  "Aïn Témouchent": { dom: 800, stop: 550 },
-  Relizane: { dom: 800, stop: 550 },
-  Laghouat: { dom: 900, stop: 650 },
-  Biskra: { dom: 900, stop: 650 },
-  Béchar: { dom: 900, stop: 650 },
-  Tébessa: { dom: 900, stop: 650 },
-  Djelfa: { dom: 900, stop: 650 },
-  Jijel: { dom: 900, stop: 650 },
-  Ouargla: { dom: 1000, stop: 700 },
-  "El Oued": { dom: 1000, stop: 700 },
-  Ghardaïa: { dom: 1000, stop: 700 },
-  "Ouled Djellal": { dom: 1000, stop: 700 },
-  Touggourt: { dom: 1000, stop: 700 },
-  "El M'Ghair": { dom: 1000, stop: 700 },
+  Adrar: { dom: 1100, stop: 850 },
+  Chlef: { dom: 700, stop: 400 },
+  Laghouat: { dom: 800, stop: 450 },
+  "Oum El Bouaghi": { dom: 700, stop: 450 },
+  Batna: { dom: 700, stop: 400 },
+  Béjaïa: { dom: 700, stop: 400 },
+  Biskra: { dom: 700, stop: 450 },
+  Béchar: { dom: 1000, stop: 750 },
+  Blida: { dom: 500, stop: 300 },
+  Bouira: { dom: 700, stop: 400 },
+  Tamanrasset: { dom: 1100, stop: 900 },
+  Tébessa: { dom: 800, stop: 450 },
+  Tlemcen: { dom: 700, stop: 450 },
+  Tiaret: { dom: 700, stop: 400 },
+  "Tizi Ouzou": { dom: 700, stop: 400 },
+  Alger: { dom: 400, stop: 250 },
+  Djelfa: { dom: 750, stop: 450 },
+  Jijel: { dom: 700, stop: 400 },
+  Sétif: { dom: 700, stop: 350 },
+  Saïda: { dom: 700, stop: 550 },
+  Skikda: { dom: 700, stop: 350 },
+  "Sidi Bel Abbès": { dom: 700, stop: 400 },
+  Annaba: { dom: 700, stop: 450 },
+  Guelma: { dom: 700, stop: 350 },
+  Constantine: { dom: 700, stop: 400 },
+  Médéa: { dom: 600, stop: 300 },
+  Mostaganem: { dom: 700, stop: 400 },
+  "M'Sila": { dom: 700, stop: 350 },
+  Mascara: { dom: 700, stop: 450 },
+  Ouargla: { dom: 800, stop: 500 },
+  Oran: { dom: 700, stop: 400 },
+  "El Bayadh": { dom: 900, stop: 500 },
+  Illizi: { dom: 1200, stop: 1100 },
+  "Bordj Bou Arreridj": { dom: 700, stop: 350 },
+  Boumerdès: { dom: 600, stop: 300 },
+  "El Tarf": { dom: 700, stop: 450 },
+  Tindouf: { dom: 1300, stop: 850 },
+  Tissemsilt: { dom: 700, stop: 400 },
+  "El Oued": { dom: 700, stop: 550 },
+  Khenchela: { dom: 700, stop: 450 },
+  "Souk Ahras": { dom: 700, stop: 400 },
+  Tipaza: { dom: 600, stop: 300 },
+  Mila: { dom: 700, stop: 400 },
+  "Aïn Defla": { dom: 700, stop: 400 },
+  Naâma: { dom: 900, stop: 650 },
+  "Aïn Témouchent": { dom: 700, stop: 450 },
+  Ghardaïa: { dom: 800, stop: 450 },
+  Relizane: { dom: 700, stop: 400 },
+  "El M'Ghair": { dom: 800, stop: 0 },
   "El Meniaa": { dom: 1000, stop: 700 },
-  Adrar: { dom: 1300, stop: 900 },
-  "El Bayadh": { dom: 1300, stop: 900 },
-  Naâma: { dom: 1300, stop: 900 },
-  Timimoun: { dom: 1300, stop: 900 },
+  "Ouled Djellal": { dom: 800, stop: 600 },
+  "Béni Abbès": { dom: 1200, stop: 700 },
+  Timimoun: { dom: 1000, stop: 750 },
+  Touggourt: { dom: 800, stop: 550 },
+  "In Salah": { dom: 1000, stop: 1000 },
   "Bordj Baji Mokhtar": { dom: 1300, stop: 1300 },
-  "Béni Abbès": { dom: 1300, stop: 900 },
-  Tamanrasset: { dom: 1700, stop: 1300 },
-  Illizi: { dom: 1700, stop: 1300 },
-  Tindouf: { dom: 1700, stop: 1300 },
-  "In Salah": { dom: 1700, stop: 1300 },
-  "In Guezzam": { dom: 1700, stop: 1700 },
-  Djanet: { dom: 1700, stop: 1300 },
+  Djanet: { dom: 1200, stop: 1100 },
+  "In Guezzam": { dom: 1300, stop: 1300 },
 };
 
 const orderStatusesList = [
@@ -172,12 +172,12 @@ const SUGGESTED_COMMUNES = {
 
 // --- FIREBASE ---
 const firebaseConfig = {
-  apiKey: "AIzaSyBn2UV3ilolO7Rqj2bo4dm_vQsn3v_6Ia4",
-  authDomain: "yunas-shop-app.firebaseapp.com",
-  projectId: "yunas-shop-app",
-  storageBucket: "yunas-shop-app.firebasestorage.app",
-  messagingSenderId: "584178390864",
-  appId: "1:584178390864:web:40c32f3de1acdae2793e55",
+  apiKey: "AIzaSyCbxQxb0qJBlxtTbDd4-S9MG9lUQsvLwcAg",
+  authDomain: "elegancia-shop-crm.firebaseapp.com",
+  projectId: "elegancia-shop-crm",
+  storageBucket: "elegancia-shop-crm.firebasestorage.app",
+  messagingSenderId: "841214436588",
+  appId: "1:841214436588:web:77d4c8ac84c984cfcdb1c9"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -403,8 +403,8 @@ function Login() {
   return (
     <div style={{ height:"100vh",display:"flex",justifyContent:"center",alignItems:"center",backgroundColor:"#FDFBF7",fontFamily:"sans-serif",padding:"20px" }}>
       <div style={{ padding:"30px",backgroundColor:"#FFFFFF",borderRadius:"24px",boxShadow:"0 4px 15px rgba(0,0,0,0.05)",textAlign:"center",width:"100%",maxWidth:"350px",border:"1px solid #EBE5D9" }}>
-        <h2 style={{ color:"#8D7B68",fontWeight:"bold",marginBottom:"5px",fontSize:"20px",fontFamily:"serif",letterSpacing:"2px" }}>YUNA'S SHOP</h2>
-        <p style={{ color:"#B8A99A",fontSize:"10px",textTransform:"uppercase",letterSpacing:"1px",marginBottom:"20px",fontWeight:"bold" }}>Suite Elite de Sara</p>
+        <h2 style={{ color:"#8D7B68",fontWeight:"bold",marginBottom:"5px",fontSize:"20px",fontFamily:"serif",letterSpacing:"2px" }}>ELEGANCIA SHOP</h2>
+        <p style={{ color:"#B8A99A",fontSize:"10px",textTransform:"uppercase",letterSpacing:"1px",marginBottom:"20px",fontWeight:"bold" }}>Suite Elite de Hadjer</p>
         <form onSubmit={handleLogin} style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
           <input name="email" type="email" placeholder="Email admin" required style={{ padding:"12px",border:"1px solid #EBE5D9",borderRadius:"12px",outline:"none",backgroundColor:"#FAF7F2",fontSize:"14px",color:"#4A3F35",fontWeight:"bold" }} />
           <input name="password" type="password" placeholder="Mot de passe" required style={{ padding:"12px",border:"1px solid #EBE5D9",borderRadius:"12px",outline:"none",backgroundColor:"#FAF7F2",fontSize:"14px",color:"#4A3F35",fontWeight:"bold" }} />
@@ -950,8 +950,8 @@ const MainApp = ({ user }) => {
       {/* SIDEBAR */}
       <aside className="hidden md:flex w-64 border-r border-[#E8D5C4]/30 p-6 flex-col gap-6 bg-white/50 backdrop-blur-md z-10 shadow-sm print:hidden">
         <div className="px-2 text-center">
-          <h1 className="text-xl font-serif tracking-widest text-[#8D7B68] font-bold">YUNA'S SHOP</h1>
-          <p className="text-[9px] uppercase tracking-tighter opacity-50 font-bold italic">Suite Elite de Sara ✨</p>
+          <h1 className="text-xl font-serif tracking-widest text-[#8D7B68] font-bold">ELEGANCIA SHOP</h1>
+          <p className="text-[9px] uppercase tracking-tighter opacity-50 font-bold italic">Suite Elite de Hadjer ✨</p>
         </div>
         <nav className="flex-1 space-y-2 mt-4">
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
@@ -1852,7 +1852,7 @@ const OrderModal = ({
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest ml-1">Responsable du retour</label>
                             <select className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white text-[#4A3F35]" value={item.responsableRetour || "boutique"} onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, responsableRetour: e.target.value } : oi))}>
-                              <option value="boutique">Erreur Yuna's Shop / Shein</option>
+                              <option value="boutique">Erreur ELEGANCIA SHOP / Shein</option>
                               <option value="cliente">Changement d'avis (Cliente)</option>
                             </select>
                           </div>
@@ -2446,7 +2446,7 @@ const ReceiptModal = ({ order, onClose, formatDA }) => {
         </div>
         <div className="p-8 md:p-10 pt-12 md:pt-12 text-center overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-4 print:h-auto print:pt-4">
           <div className="mb-6 md:mb-8">
-            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">YUNA'S SHOP</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">ELEGANCIA SHOP</h2>
             <div className="h-px w-8 bg-[#D4B996] mx-auto mb-2 print:bg-black"></div>
             <p className="text-[8px] uppercase tracking-[0.4em] text-[#B8A99A] font-bold print:text-black">Bon de Commande</p>
           </div>
