@@ -310,9 +310,11 @@ const Toast = ({ msg, type, onClose }) => {
       }`}
     >
       <span className="text-xs font-bold">{msg}</span>
-      <button onClick={onClose} className="opacity-80 hover:opacity-100"><X size={14} /></button>
-    </div>
-  );
+      <button onClick={onClose} className="opacity-80 hover:opacity-100"><X size={14} /></button>
+    </div>
+  );
+}; // <--- AJOUTE JUSTE CECI POUR FERMER LE TOAST !
+
 const ImageUploader = ({ compact, value, onChange, path }) => {
   const [loading, setLoading] = useState(false);
 
@@ -1597,8 +1599,9 @@ const OrderModal = ({
   orderDate, setOrderDate, orderNumber, setOrderNumber,
   config, arrivages, handleSaveOrder, formatDA, calculateTotals,
   shippingNational, setShippingNational, onClose,
-  orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount, orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
-  orderReceiptImage, setOrderReceiptImage, // <-- NOUVEAU ICI
+  orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
+  orderReceiptImage, setOrderReceiptImage,
+}) => {
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
