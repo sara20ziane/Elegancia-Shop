@@ -184,7 +184,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const appId = "yunas-shop-crm";
+const appId = "elegancia-shop-crm";
 
 // --- HELPERS STORAGE ---
 const uploadFile = async (file, path) => {
@@ -898,7 +898,7 @@ const MainApp = ({ user }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `Commandes_Yunas_Shop_${filterMonth}_${filterYear}.csv`);
+   link.setAttribute("download", `Commandes_Elegancia_Shop_${filterMonth}_${filterYear}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
