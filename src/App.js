@@ -404,7 +404,7 @@ function Login() {
     <div style={{ height:"100vh",display:"flex",justifyContent:"center",alignItems:"center",backgroundColor:"#FDFBF7",fontFamily:"sans-serif",padding:"20px" }}>
       <div style={{ padding:"30px",backgroundColor:"#FFFFFF",borderRadius:"24px",boxShadow:"0 4px 15px rgba(0,0,0,0.05)",textAlign:"center",width:"100%",maxWidth:"350px",border:"1px solid #EBE5D9" }}>
         <h2 style={{ color:"#8D7B68",fontWeight:"bold",marginBottom:"5px",fontSize:"20px",fontFamily:"serif",letterSpacing:"2px" }}>ELEGANCIA SHOP</h2>
-        <p style={{ color:"#B8A99A",fontSize:"10px",textTransform:"uppercase",letterSpacing:"1px",marginBottom:"20px",fontWeight:"bold" }}>Suite Elite de Hadjer</p>
+        <p style={{ color:"#B8A99A",fontSize:"10px",textTransform:"uppercase",letterSpacing:"1px",marginBottom:"20px",fontWeight:"bold" }}>ESPACE PRIVÉ DE HADJER</p>
         <form onSubmit={handleLogin} style={{ display:"flex",flexDirection:"column",gap:"10px" }}>
           <input name="email" type="email" placeholder="Email admin" required style={{ padding:"12px",border:"1px solid #EBE5D9",borderRadius:"12px",outline:"none",backgroundColor:"#FAF7F2",fontSize:"14px",color:"#4A3F35",fontWeight:"bold" }} />
           <input name="password" type="password" placeholder="Mot de passe" required style={{ padding:"12px",border:"1px solid #EBE5D9",borderRadius:"12px",outline:"none",backgroundColor:"#FAF7F2",fontSize:"14px",color:"#4A3F35",fontWeight:"bold" }} />
@@ -951,7 +951,7 @@ const MainApp = ({ user }) => {
       <aside className="hidden md:flex w-64 border-r border-[#E8D5C4]/30 p-6 flex-col gap-6 bg-white/50 backdrop-blur-md z-10 shadow-sm print:hidden">
         <div className="px-2 text-center">
           <h1 className="text-xl font-serif tracking-widest text-[#8D7B68] font-bold">ELEGANCIA SHOP</h1>
-          <p className="text-[9px] uppercase tracking-tighter opacity-50 font-bold italic">Suite Elite de Hadjer ✨</p>
+          <p className="text-[9px] uppercase tracking-tighter opacity-50 font-bold italic">ESPACE PRIVÉ DE HADJER ✨</p>
         </div>
         <nav className="flex-1 space-y-2 mt-4">
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
