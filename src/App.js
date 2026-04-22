@@ -11,6 +11,7 @@ import {
   deleteDoc,
   Timestamp,
 } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import {
   getAuth,
   onAuthStateChanged,
@@ -56,6 +57,8 @@ import {
   Download,
   Printer,
   Loader2,
+  UploadCloud, // <-- NOUVEAU
+  Image as ImageIcon // <-- NOUVEAU
 } from "lucide-react";
 import {
   LineChart,
@@ -180,7 +183,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app); // <-- NOUVEAU : On active le Storage
 const appId = "yunas-shop-crm";
+
+// --- NOUVEAUX HELPERS STORAGE ---
+const uploadFile = async (file, path) => {
+  if (!file) return null;
+  const storageRef = ref(storage, path);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+};
+
+const deleteFile = async (fileUrl) => {
+  if (!fileUrl) return;
+  try {
+    const fileRef = ref(storage, fileUrl);
+    await deleteObject(fileRef);
+  } catch (error) {
+    console.log("Erreur suppression image:", error);
+  }
+};
 
 // --- HELPERS ---
 const formatDA = (val) =>
@@ -291,6 +313,81 @@ const Toast = ({ msg, type, onClose }) => {
       <button onClick={onClose} className="opacity-80 hover:opacity-100"><X size={14} /></button>
     </div>
   );
+const ImageUploader = ({ compact, value, onChange, path }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      if (value) await deleteFile(value);
+      const url = await uploadFile(file, `${path}/${Date.now()}_${file.name}`);
+      onChange(url);
+    } catch (error) {
+      console.error("Upload error", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (value) await deleteFile(value);
+    onChange("");
+  };
+
+  if (compact) {
+    return (
+      <div className="relative w-10 h-10 md:w-[38px] md:h-[38px] border border-dashed border-[#E8D5C4] rounded-lg flex items-center justify-center bg-white overflow-hidden shrink-0 group shadow-sm transition-all hover:border-[#D4B996]">
+        {loading ? (
+          <Loader2 size={14} className="animate-spin text-[#8D7B68]" />
+        ) : value ? (
+          <>
+            <img src={value} alt="Article" className="w-full h-full object-cover" />
+            <button type="button" onClick={handleRemove} className="absolute inset-0 bg-white/80 hidden group-hover:flex items-center justify-center text-red-400 transition-all">
+              <Trash2 size={14} />
+            </button>
+          </>
+        ) : (
+          <label className="cursor-pointer w-full h-full flex items-center justify-center hover:bg-[#FAF7F2] transition-colors">
+            <ImageIcon size={14} className="text-[#B8A99A]" />
+            <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+          </label>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 bg-white p-3 rounded-2xl border border-[#E8D5C4]/40 shadow-sm">
+      <label className="text-[9px] text-[#B8A99A] font-bold uppercase tracking-widest mb-2 block">Reçu de versement (Global)</label>
+      <div className="relative h-24 border border-dashed border-[#E8D5C4] rounded-xl flex items-center justify-center bg-[#FAF7F2]/50 hover:bg-[#FAF7F2] transition-colors overflow-hidden group">
+        {loading ? (
+          <div className="flex flex-col items-center text-[#8D7B68]"><Loader2 size={18} className="animate-spin mb-2" /><span className="text-[9px] font-bold uppercase tracking-widest">Envoi en cours...</span></div>
+        ) : value ? (
+          <>
+            {value.includes(".pdf") ? (
+               <div className="flex flex-col items-center gap-1 text-[#8D7B68]"><UploadCloud size={20} /><span className="text-[10px] font-bold">PDF Ajouté</span></div>
+            ) : (
+               <img src={value} alt="Reçu" className="h-full w-full object-contain p-1" />
+            )}
+            <div className="absolute inset-0 bg-white/90 hidden group-hover:flex items-center justify-center gap-4 backdrop-blur-sm">
+               <label className="p-2.5 bg-[#FAF7F2] rounded-xl cursor-pointer text-[#8D7B68] hover:scale-105 shadow-sm border border-[#E8D5C4]"><Edit3 size={16} /><input type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} /></label>
+               <button type="button" onClick={handleRemove} className="p-2.5 bg-red-50 text-red-400 rounded-xl hover:scale-105 shadow-sm border border-red-100"><Trash2 size={16} /></button>
+            </div>
+          </>
+        ) : (
+          <label className="cursor-pointer flex flex-col items-center w-full h-full justify-center text-[#B8A99A] hover:text-[#8D7B68] transition-colors">
+            <UploadCloud size={20} className="mb-2" />
+            <span className="text-[9px] font-bold uppercase tracking-widest">Joindre une image ou PDF</span>
+            <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleUpload} />
+          </label>
+        )}
+      </div>
+    </div>
+  );
 };
 
 // --- LOGIN ---
@@ -383,6 +480,7 @@ const MainApp = ({ user }) => {
   const [arrivageDate, setArrivageDate] = useState("");
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [orderRefundAmount, setOrderRefundAmount] = useState(0);
+  const [orderReceiptImage, setOrderReceiptImage] = useState("");
 
   useEffect(() => {
     const path = (coll) => collection(db, "artifacts", appId, "public", "data", coll);
@@ -667,6 +765,7 @@ const MainApp = ({ user }) => {
         date: Timestamp.fromDate(selectedDate),
         discount: parseFloat(orderDiscount) || 0,
         refundAmount: parseFloat(orderRefundAmount) || 0,
+        receiptImage: orderReceiptImage, // <-- NOUVEAU
       };
 
       // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE (Si la cliente paie trop en cash)
@@ -815,7 +914,9 @@ const MainApp = ({ user }) => {
     setOrderStatus(o.status);
     setOrderDate(existingDate);
     setOrderNumber(o.orderNumber);
+    setOrderReceiptImage(o.receiptImage || ""); // <-- NOUVEAU
     setShowAddOrder(true);
+    
   };
 
   return (
@@ -1012,6 +1113,7 @@ const MainApp = ({ user }) => {
                     setOrderStatus("A commander");
                     setOrderDiscount(0);
                     setOrderRefundAmount(0);
+                    setOrderReceiptImage(""); // <-- NOUVEAU
                     setShowAddOrder(true);
                     setEditingOrder(null);
                   }}
@@ -1397,6 +1499,8 @@ const MainApp = ({ user }) => {
           setOrderDiscount={setOrderDiscount}
           orderRefundAmount={orderRefundAmount}
           setOrderRefundAmount={setOrderRefundAmount}
+          orderReceiptImage={orderReceiptImage}       // <-- NOUVEAU
+          setOrderReceiptImage={setOrderReceiptImage} // <-- NOUVEAU
           onClose={() => { setShowAddOrder(false); setEditingOrder(null); }}
         />
       )}
@@ -1493,7 +1597,8 @@ const OrderModal = ({
   orderDate, setOrderDate, orderNumber, setOrderNumber,
   config, arrivages, handleSaveOrder, formatDA, calculateTotals,
   shippingNational, setShippingNational, onClose,
-  orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
+  orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount, orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
+  orderReceiptImage, setOrderReceiptImage, // <-- NOUVEAU ICI
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -1648,6 +1753,12 @@ const OrderModal = ({
                           <span className="text-[9px] font-bold text-[#D4B996] uppercase">Vente DA</span>
                           <input type="number" className="w-full outline-none text-sm md:text-xs font-black text-[#8D7B68] text-right bg-transparent" value={item.priceVente} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceVente: e.target.value } : oi))} />
                         </div>
+                            <ImageUploader 
+      compact 
+      value={item.itemImage} 
+      path={`orders/${orderNumber}/items`} 
+      onChange={(url) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, itemImage: url } : oi))} 
+    />
                         <button type="button" onClick={() => setOrderItems(orderItems.filter((oi) => oi.id !== item.id))} className="text-red-400 bg-red-50 hover:bg-red-100 p-2.5 md:p-1.5 rounded-lg transition-colors shadow-sm"><Trash2 size={16} /></button>
                       </div>
                     </div>
@@ -1725,6 +1836,11 @@ const OrderModal = ({
                     ))
                   )}
                 </div>
+                  <ImageUploader
+      value={orderReceiptImage}
+      path={`orders/${orderNumber}/receipts`}
+      onChange={setOrderReceiptImage}
+    />
                 <div className="flex gap-2 bg-gray-50 p-2 rounded-xl border border-gray-100 mt-auto">
                   <input type="date" value={newPaymentDate} onChange={(e) => setNewPaymentDate(e.target.value)} className="w-24 p-2 rounded-lg text-[10px] outline-none text-gray-600 font-bold border border-transparent focus:border-[#E8D5C4]" />
                   <input type="number" placeholder="Montant DA (Cash/CCP)" value={newPaymentAmount} onChange={(e) => setNewPaymentAmount(e.target.value)} className="flex-1 p-2 rounded-lg text-xs outline-none font-bold text-[#8D7B68] border border-transparent focus:border-[#E8D5C4]" />
