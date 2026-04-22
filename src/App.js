@@ -172,7 +172,7 @@ const SUGGESTED_COMMUNES = {
 
 // --- FIREBASE ---
 const firebaseConfig = {
-  apiKey: "AIzaSyCbxQxb0qJBlxtTbDd4-S9MG9lUQsvLwcAg",
+  apiKey: "AIzaSyCbQxb0qJBlxtTbDd4-S9MG9lUQsvLwcAg",
   authDomain: "elegancia-shop-crm.firebaseapp.com",
   projectId: "elegancia-shop-crm",
   storageBucket: "elegancia-shop-crm.firebasestorage.app",
