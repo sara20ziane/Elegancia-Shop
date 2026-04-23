@@ -903,25 +903,36 @@ const MainApp = ({ user }) => {
     setDeleteTarget(null);
   };
 
-  const exportCSV = () => {
-    if (filteredOrders.length === 0) { showToast("Aucune donnée à exporter", "error"); return; }
-    const headers = ["N° Commande","Date","Cliente","Statut","Total DA","Avance DA","Reste DA"];
-    const rows = filteredOrders.map((o) => {
-      const d = o.date?.toDate ? o.date.toDate().toLocaleDateString("fr-FR") : new Date(o.date).toLocaleDateString("fr-FR");
-      const total = (parseFloat(o.totalVente) || 0) + (parseFloat(o.shippingNational) || 0);
+  const exportPackersCSV = () => {
+    const ordersToExport = filteredOrders.filter(o => selectedOrders.includes(o.id));
+    if (ordersToExport.length === 0) { 
+      showToast("Cochez au moins une commande !", "error"); 
+      return; 
+    }
+
+    const headers = ["reference commande", "nom et prenom du destinataire*", "telephone*", "telephone 2", "code wilaya*", "wilaya de livraison", "commune de livraison*", "adresse de livraison*", "Lien map", "produit*", "poids (kg)", "montant du colis*", "remarque", "FRAGILE ( si oui mettez OUI sinon laissez vide )", "ECHANGE ( si oui mettez OUI sinon laissez vide )", "PICK UP ( si oui mettez OUI sinon laissez vide )", "RECOUVREMENT ( si oui mettez OUI sinon laissez vide )", "STOP DESK ( si oui mettez OUI sinon laissez vide )"];
+
+    const rows = ordersToExport.map((o) => {
+      const c = customers.find(cust => cust.id === o.customerId) || {};
+      const wilayaCode = c.wilaya ? c.wilaya.substring(0, 2).trim() : "";
+      const wilayaName = c.wilaya ? c.wilaya.substring(3).trim() : "";
+      const adresse = c.deliveryMode === "stopdesk" ? c.stopdeskName : "Domicile";
+      const isStopdesk = c.deliveryMode === "stopdesk" ? "OUI" : "";
+      const products = (o.items || []).filter(i => i.status !== "Retourné Fournisseur").map(i => `${i.name} (${i.size}/${i.color})`).join(" + ");
+      const totalWeightKg = (o.items || []).reduce((sum, item) => sum + (parseFloat(item.weightG) || 0), 0) / 1000;
       const reste = calculateReste(o);
-      return [o.orderNumber, d, o.customerName, o.status, total.toFixed(2), parseFloat(o.advancePayment || 0).toFixed(2), reste.toFixed(2)];
+
+      // Note : "Elegancia Shop" est placé automatiquement dans la colonne remarque
+      return [o.orderNumber, o.customerName, c.phone || "", c.phone2 || "", wilayaCode, wilayaName, c.commune || "", adresse, "", products, totalWeightKg.toFixed(2), reste, "Elegancia Shop", "", "", "", "", isStopdesk];
     });
-    let csvContent = "\uFEFF" + headers.join(";") + "\n" + rows.map((e) => e.join(";")).join("\n");
+
+    let csvContent = "\uFEFF" + headers.join(";") + "\n" + rows.map((e) => e.map(val => `"${val}"`).join(";")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
-   link.setAttribute("download", `Commandes_Elegancia_Shop_${filterMonth}_${filterYear}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Fichier CSV généré !");
+    link.setAttribute("href", URL.createObjectURL(blob));
+    link.setAttribute("download", `Packers_Commandes.csv`);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    showToast(`${ordersToExport.length} commande(s) exportée(s) pour Packers !`);
   };
 
   const handleAiAnalysis = async () => {
@@ -1143,9 +1154,15 @@ const MainApp = ({ user }) => {
                 </select>
               </div>
               <div className="flex gap-2 w-full md:w-auto">
-                <button onClick={exportCSV} className="px-4 py-2.5 rounded-full text-[#8D7B68] bg-white border border-[#E8D5C4] text-sm font-bold shadow-sm hover:-translate-y-1 transition-all flex items-center gap-2">
-                  <Download size={16} /><span className="hidden md:inline">Export</span>
-                </button>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl md:rounded-full border border-[#E8D5C4] shadow-sm">
+                  <button onClick={exportPackersCSV} className="px-3 py-1.5 md:py-2 rounded-xl md:rounded-full text-[#8D7B68] text-xs font-bold hover:bg-[#FAF7F2] transition-colors flex items-center gap-1.5">
+                    <Download size={14} /> Packers {selectedOrders.length > 0 && `(${selectedOrders.length})`}
+                  </button>
+                  <div className="w-px h-5 bg-[#E8D5C4]/70"></div>
+                  <button onClick={exportCSV} className="px-3 py-1.5 md:py-2 rounded-xl md:rounded-full text-[#8D7B68] text-xs font-bold hover:bg-[#FAF7F2] transition-colors flex items-center gap-1.5" title="Export classique">
+                    <Download size={14} /> Standard
+                  </button>
+                </div>
                 <button
                   onClick={() => {
                     const today = new Date().toISOString().split("T")[0];
