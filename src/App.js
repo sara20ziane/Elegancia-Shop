@@ -450,6 +450,7 @@ const MainApp = ({ user }) => {
   
   const [showCalculator, setShowCalculator] = useState(false);
   const [showTariffs, setShowTariffs] = useState(false);
+  const [selectedOrders, setSelectedOrders] = useState([]); // <--- AJOUTE CETTE LIGNE ICI
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
