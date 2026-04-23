@@ -1155,15 +1155,9 @@ const MainApp = ({ user }) => {
                 </select>
               </div>
               <div className="flex gap-2 w-full md:w-auto">
-                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl md:rounded-full border border-[#E8D5C4] shadow-sm">
-                  <button onClick={exportPackersCSV} className="px-3 py-1.5 md:py-2 rounded-xl md:rounded-full text-[#8D7B68] text-xs font-bold hover:bg-[#FAF7F2] transition-colors flex items-center gap-1.5">
-                    <Download size={14} /> Packers {selectedOrders.length > 0 && `(${selectedOrders.length})`}
-                  </button>
-                  <div className="w-px h-5 bg-[#E8D5C4]/70"></div>
-                  <button onClick={exportCSV} className="px-3 py-1.5 md:py-2 rounded-xl md:rounded-full text-[#8D7B68] text-xs font-bold hover:bg-[#FAF7F2] transition-colors flex items-center gap-1.5" title="Export classique">
-                    <Download size={14} /> Standard
-                  </button>
-                </div>
+                <button onClick={exportPackersCSV} className="px-4 py-2.5 rounded-full text-[#8D7B68] bg-white border border-[#E8D5C4] text-sm font-bold shadow-sm hover:-translate-y-1 transition-all flex items-center gap-2">
+                  <Download size={16} /><span className="hidden md:inline">Export Packers</span> {selectedOrders.length > 0 && `(${selectedOrders.length})`}
+                </button>
                 <button
                   onClick={() => {
                     const today = new Date().toISOString().split("T")[0];
