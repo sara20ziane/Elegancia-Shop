@@ -961,7 +961,6 @@ const MainApp = ({ user }) => {
     if (selectedGalleryItems.length === 0) return;
     
     try {
-      // Regrouper les modifications par commande (orderId) pour minimiser les requêtes
       const updatesByOrder = {};
       
       selectedGalleryItems.forEach(selected => {
@@ -973,13 +972,30 @@ const MainApp = ({ user }) => {
         if (updatesByOrder[selected.orderId]) {
           updatesByOrder[selected.orderId].items = updatesByOrder[selected.orderId].items.map(it => {
             if (it.id === selected.itemId) {
-              return { ...it, itemImage: "" }; // On vide l'URL de l'image
+              return { ...it, itemImage: "" }; 
             }
             return it;
           });
         }
       });
-      // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
+
+      // Exécuter la mise à jour pour chaque commande impactée
+      for (const orderId in updatesByOrder) {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
+      }
+
+      showToast(`${selectedGalleryItems.length} photo(s) retirée(s) avec succès`);
+      setIsGallerySelectionMode(false);
+      setSelectedGalleryItems([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la suppression des photos", "error");
+    }
+  };
+
+  // 👇 LA FONCTION EST MAINTENANT AU BON ENDROIT (À L'EXTÉRIEUR) 👇
+  // --- FONCTION DE MISE À JOUR RAPIDE DU STATUT ---
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
       const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
@@ -990,7 +1006,6 @@ const MainApp = ({ user }) => {
       showToast("Erreur lors de la mise à jour du statut", "error");
     }
   };
-
       // Exécuter la mise à jour pour chaque commande impactée
       for (const orderId in updatesByOrder) {
         const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
@@ -2644,8 +2659,11 @@ const OrderModal = ({
                   </div>
                 ))}
               </div>
-              <button type="button" onClick={() => setOrderItems([...orderItems, { id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: "", priceVente: 0, arrivageId: defaultArrivage, status: "En attente" }])}
-// ...
+              <button 
+                type="button" 
+                onClick={() => setOrderItems([...orderItems, { id: Date.now(), name: "", category: "", size: "", color: "", weightG: 0, priceAchatEuro: "", priceVente: 0, arrivageId: defaultArrivage, status: "En attente" }])}
+                className="w-full py-3 mt-2 border-2 border-dashed border-[#E8D5C4] text-[#8D7B68] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#FAF7F2] transition-colors flex justify-center items-center gap-2"
+              >
                 <Plus size={16} /> Ajouter un article
               </button>
             </div>
