@@ -61,6 +61,7 @@ import {
   Image as ImageIcon,
   Scale,
   Copy,
+  ShoppingCart,
   Tag // <-- AJOUTE CECI
 } from "lucide-react";
 import {
@@ -905,6 +906,109 @@ const StationPrixAchat = ({ orders, showToast }) => {
     </div>
   );
 };
+// --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
+const AchatsTab = ({ orders }) => {
+  const achatsGroupes = React.useMemo(() => {
+    const groups = {};
+    orders.forEach(o => {
+      if (o.status === "Annulée") return;
+      (o.items || []).forEach(it => {
+        if (it.supplierDate) {
+          const key = `${it.supplierDate}_${it.supplierLot || "Unique"}`;
+          if (!groups[key]) {
+            groups[key] = {
+              date: it.supplierDate,
+              lot: it.supplierLot || "Unique",
+              items: [],
+              totalAffiche: 0,
+              totalReel: 0
+            };
+          }
+          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber });
+          
+          const prixEu = parseFloat(it.priceAchatEuro) || 0;
+          groups[key].totalAffiche += prixEu;
+          
+          const ratio = PURCHASE_SOURCES[it.purchaseSource]?.ratio || 1;
+          groups[key].totalReel += prixEu * ratio;
+        }
+      });
+    });
+    
+    // Trier du plus récent au plus ancien
+    return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [orders]);
+
+  return (
+    <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
+      <div className="bg-[#FAF7F2]/80 p-4 rounded-2xl md:rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm flex items-center gap-3">
+         <div className="p-3 bg-white rounded-full shadow-sm"><ShoppingCart size={20} className="text-[#8D7B68]" /></div>
+         <div>
+           <h3 className="font-serif font-bold text-[#8D7B68] text-lg tracking-widest uppercase">Achats Sites</h3>
+           <p className="text-[10px] font-bold text-[#B8A99A]">Suis tes commandes passées sur les sites et tes dépenses réelles avec les cartes cadeaux.</p>
+         </div>
+      </div>
+
+      {achatsGroupes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 opacity-50">
+          <ShoppingCart size={48} className="text-[#D4B996] mb-4" />
+          <p className="text-sm font-bold text-[#8D7B68]">Aucun achat sur site enregistré.</p>
+          <p className="text-[10px] font-bold text-gray-400 mt-2">Assigne une date de commande à tes articles pour créer des lots.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {achatsGroupes.map((groupe, idx) => {
+             const economie = groupe.totalAffiche - groupe.totalReel;
+             return (
+              <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-[#E8D5C4]/30 flex flex-col hover:border-[#D4B996] transition-colors">
+                <div className="flex justify-between items-start border-b border-gray-100 pb-3 mb-3">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Date Commande Site</span>
+                    <h4 className="font-black text-[#8D7B68] text-lg">{groupe.date}</h4>
+                    <span className="text-[10px] font-bold text-[#D4B996] bg-[#FAF7F2] px-2 py-0.5 rounded-md mt-1 inline-block border border-[#E8D5C4]/50">
+                      Lot / Identifiant : {groupe.lot}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
+                    <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
+                  </div>
+                </div>
+                
+                <div className="flex-1 overflow-y-auto max-h-32 custom-scrollbar space-y-2 mb-4 pr-1">
+                  {groupe.items.map((it, i) => (
+                    <div key={i} className="flex justify-between items-center text-[10px] font-medium text-gray-600 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
+                      <span className="truncate w-3/4 flex gap-1">
+                        <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> {it.name || "Article sans nom"}
+                      </span>
+                      <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm">{parseFloat(it.priceAchatEuro || 0).toFixed(2)} €</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-auto bg-[#FAF7F2]/50 p-4 rounded-xl border border-[#E8D5C4]/40">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase">Panier Affiché (Site)</span>
+                    <span className="text-xs font-bold text-gray-400 line-through">{groupe.totalAffiche.toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-bold text-[#8D7B68] uppercase">Coût Réel Déduit (avec CC)</span>
+                    <span className="text-xl font-black text-[#8D7B68]">{groupe.totalReel.toFixed(2)} €</span>
+                  </div>
+                  {economie > 0 && (
+                    <div className="text-[10px] font-black text-green-600 bg-green-50 text-center py-1.5 rounded-lg border border-green-100 uppercase tracking-widest shadow-sm">
+                      Économie Réalisée : + {economie.toFixed(2)} €
+                    </div>
+                  )}
+                </div>
+              </div>
+             );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 // --- MAIN APP ---
 const MainApp = ({ user }) => {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -1581,6 +1685,7 @@ const MainApp = ({ user }) => {
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
           <SidebarItem active={activeTab === "finances"} onClick={() => setActiveTab("finances")} icon={Euro} label="Trésorerie" />
+          <SidebarItem active={activeTab === "achats"} onClick={() => setActiveTab("achats")} icon={ShoppingCart} label="Achats Sites" />
         </nav>
         <button onClick={() => setShowConfig(true)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-[#8D7B68] transition-all bg-white/60 shadow-sm">
           <Settings2 size={18} /><span className="text-xs font-bold uppercase tracking-widest">Options</span>
@@ -2340,6 +2445,8 @@ const MainApp = ({ user }) => {
             </div>
           </div>
         )}
+          {/* NOUVEL ONGLET : ACHATS SITES */}
+        {activeTab === "achats" && <AchatsTab orders={orders} />}
       </main>
 
       {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
@@ -2353,6 +2460,7 @@ const MainApp = ({ user }) => {
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },
           { tab: "finances", icon: Euro, label: "Tréso" },
+          { tab: "achats", icon: ShoppingCart, label: "Sites" },
         ].map(({ tab, icon: Icon, label }) => (
           <button key={tab} onClick={() => setActiveTab(tab)} className={`shrink-0 min-w-[64px] snap-center relative flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === tab ? "text-[#8D7B68] scale-105" : "text-[#B8A99A]"}`}>
             <Icon size={20} />
@@ -2667,6 +2775,24 @@ const OrderModal = ({
                         <button type="button" onClick={() => setOrderItems(orderItems.filter((oi) => oi.id !== item.id))} className="text-red-400 bg-red-50 hover:bg-red-100 p-2.5 md:p-1.5 rounded-lg transition-colors shadow-sm"><Trash2 size={16} /></button>
                       </div>
                     </div>
+         {/* LIEN AVEC LA COMMANDE SITE */}
+<div className="mt-2 flex items-center gap-2 bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-[#E8D5C4]/30">
+  <ShoppingCart size={14} className="text-[#B8A99A] shrink-0"/>
+  <span className="text-[10px] font-bold text-[#B8A99A] uppercase tracking-widest hidden md:inline">Cmd Site :</span>
+  <input 
+    type="date" 
+    value={item.supplierDate || ""} 
+    onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierDate: e.target.value } : oi))} 
+    className="p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white"
+  />
+  <input 
+    type="text" 
+    placeholder="Identifiant (ex: Lot 1, Solde...)" 
+    value={item.supplierLot || ""} 
+    onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierLot: e.target.value } : oi))} 
+    className="flex-1 p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white"
+  />
+</div>
                     {item.status === "Retourné Fournisseur" && (
                       <div className="flex flex-col gap-3 mt-3 p-3 md:p-4 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-red-100">
