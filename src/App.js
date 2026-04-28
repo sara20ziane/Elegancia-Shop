@@ -695,26 +695,23 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
 // --- COMPOSANT : STATION DE PRIX D'ACHAT ---
 const StationPrixAchat = ({ orders, showToast }) => {
   const [prixSaisi, setPrixSaisi] = useState("");
-  const [sourceSaisie, setSourceSaisie] = useState("CC 500"); // <-- NOUVEAU : On stocke la carte choisie
+  const [sourceSaisie, setSourceSaisie] = useState("CC 500");
+  const [dateAchat, setDateAchat] = useState(new Date().toISOString().split("T")[0]);
+  const [lotSaisi, setLotSaisi] = useState("");
   const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
-  // 1. Récupérer les articles sans prix d'achat
   const articlesAPricer = React.useMemo(() => {
     let list = [];
     orders.forEach((o) => {
-      // On ignore les commandes terminées ou annulées
       if (o.status === "Annulée" || o.status === "Payée et livrée" || o.status === "Livrée sans paiement") return;
-      
       (o.items || []).forEach((item) => {
-        // On cible les articles non retournés, où le prix est vide, null, ou bien à 0 MAIS sans le flag 'prixAchatSaisi'
         if (item.status !== "Retourné Fournisseur" && 
            (item.priceAchatEuro === "" || item.priceAchatEuro === undefined || (!item.prixAchatSaisi && item.priceAchatEuro == 0))) {
           list.push({ ...item, orderId: o.id, orderNumber: o.orderNumber, customerName: o.customerName, orderObj: o });
         }
       });
     });
-    // Tri par date (les plus anciens d'abord)
     return list.sort((a, b) => {
       const timeA = a.orderObj.date?.toMillis ? a.orderObj.date.toMillis() : new Date(a.orderObj.date || 0).getTime();
       const timeB = b.orderObj.date?.toMillis ? b.orderObj.date.toMillis() : new Date(b.orderObj.date || 0).getTime();
@@ -730,31 +727,30 @@ const StationPrixAchat = ({ orders, showToast }) => {
     if (inputRef.current) inputRef.current.focus();
   }, [indexActuel, articlesAPricer]);
 
-  // FONCTION POUR SAUVEGARDER
   const soumettrePrix = async (currentItem, prixForce = null) => {
     const prixAEnregistrer = prixForce !== null ? prixForce : prixSaisi;
-    
     if (prixAEnregistrer === "") return;
 
     try {
       const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", currentItem.orderId);
-      
       const updatedItems = currentItem.orderObj.items.map(it => {
         if (it.id === currentItem.id) {
           return { 
             ...it, 
             priceAchatEuro: parseFloat(prixAEnregistrer), 
-            prixAchatSaisi: true, // Ce flag dit au système : "Sara a validé ce prix, même si c'est 0"
-            purchaseSource: prixForce === 0 ? "CB" : sourceSaisie // <-- NOUVEAU : On enregistre la carte cadeau utilisée
+            prixAchatSaisi: true,
+            purchaseSource: prixForce === 0 ? "CB" : sourceSaisie,
+            supplierDate: dateAchat, // Enregistre la date du site
+            supplierLot: lotSaisi     // Enregistre le lot
           };
         }
         return it;
       });
 
       await updateDoc(orderRef, { items: updatedItems });
-      showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Prix validé : ${prixAEnregistrer} € avec ${PURCHASE_SOURCES[sourceSaisie].label}`);
+      showToast(`Validé : ${prixAEnregistrer}€ | ${PURCHASE_SOURCES[sourceSaisie].label}`);
       setPrixSaisi("");
-      // Note: On ne vide pas `sourceSaisie`, ça permet de rester sur CC 500 pour enchaîner les articles
+      // On garde sourceSaisie, dateAchat et lotSaisi pour l'article suivant (gain de temps !)
     } catch (error) {
       showToast("Erreur lors de la sauvegarde", "error");
     }
@@ -771,137 +767,79 @@ const StationPrixAchat = ({ orders, showToast }) => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 animate-in zoom-in-95 mt-2 md:mt-4">
-      
       {/* EN-TÊTE */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2 bg-white p-4 rounded-[1.5rem] border border-[#E8D5C4]/40 shadow-sm">
         <div className="flex flex-col">
           <h3 className="font-serif text-[#8D7B68] text-sm md:text-lg font-bold flex items-center gap-2 uppercase tracking-widest shrink-0">
-            <Euro size={20} className="text-[#D4B996]"/> Saisie des Prix d'Achat
+            <Tag size={20} className="text-[#D4B996]"/> Station Achats & Prix
           </h3>
-          <p className="text-[9px] font-bold text-gray-400 mt-1">Remplis les prix en euros de tes articles non chiffrés.</p>
+          <p className="text-[9px] font-bold text-gray-400 mt-1">Saisis le prix, la carte et le lot de commande en une seule fois.</p>
         </div>
         
-        <span className="bg-[#FAF7F2] border border-[#E8D5C4]/50 text-[#8D7B68] text-[10px] px-4 py-3 rounded-xl font-black uppercase shadow-sm shrink-0">
-          En attente : {articlesAPricer.length}
-        </span>
+        <div className="flex gap-2">
+            <div className="flex flex-col items-end">
+                <span className="text-[8px] uppercase font-black text-gray-300">Date d'achat Site</span>
+                <input type="date" value={dateAchat} onChange={(e) => setDateAchat(e.target.value)} className="p-2 rounded-lg text-[10px] font-bold text-[#8D7B68] bg-[#FAF7F2] border border-[#E8D5C4]/30 outline-none" />
+            </div>
+            <div className="flex flex-col items-end">
+                <span className="text-[8px] uppercase font-black text-gray-300">Identifiant / Lot</span>
+                <input type="text" placeholder="ex: Lot 1" value={lotSaisi} onChange={(e) => setLotSaisi(e.target.value)} className="p-2 rounded-lg text-[10px] font-bold text-[#8D7B68] bg-[#FAF7F2] border border-[#E8D5C4]/30 outline-none w-24" />
+            </div>
+        </div>
       </div>
 
-      {articlesAPricer.length === 0 ? (
+      {!currentItem ? (
         <div className="flex flex-col items-center justify-center py-20 opacity-60 bg-white rounded-[2rem] border border-[#E8D5C4]/30 shadow-sm mt-4">
-          <Euro size={64} className="text-[#D4B996] mb-4" />
-          <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est à jour !</h3>
-          <p className="text-sm font-bold text-[#B8A99A]">Tous les articles de tes commandes en cours ont un prix d'achat.</p>
+          <ShoppingCart size={64} className="text-[#D4B996] mb-4" />
+          <h3 className="text-xl font-serif font-bold text-[#8D7B68]">Tout est commandé !</h3>
+          <p className="text-sm font-bold text-[#B8A99A]">Aucun article en attente de prix d'achat.</p>
         </div>
       ) : (
-        <>
-          {/* CARTE PRINCIPALE */}
-          {currentItem && (
-            <div className="p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors bg-white border-[#E8D5C4]/30 mt-6">
+        <div className="p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors bg-white border-[#E8D5C4]/30">
+          
+          <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+            {currentItem.itemImage ? <img src={currentItem.itemImage} className="w-full h-full object-cover" /> : <ImageIcon size={48} className="text-[#E8D5C4]" />}
+          </div>
+
+          <div className="flex-1 w-full text-center md:text-left">
+            <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">CMD: {currentItem.orderNumber}</span>
+            <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] mt-2">{currentItem.customerName}</h2>
+            <p className="text-sm font-bold text-[#B8A99A] mb-6">{currentItem.name || "Article"} • {currentItem.size} / {currentItem.color}</p>
+
+            <div className="bg-[#FAF7F2]/50 p-4 rounded-2xl border border-[#E8D5C4]/40">
+              <label className="text-[10px] uppercase font-bold mb-2 block tracking-widest text-[#D4B996]">Prix d'achat & Carte</label>
               
-              <div className="hidden md:flex flex-col items-center gap-4">
-                 <button 
-                   onClick={() => setIndexActuel(prev => Math.max(0, prev - 1))}
-                   disabled={indexActuel === 0}
-                   className="p-3 bg-[#FAF7F2] rounded-full text-[#8D7B68] hover:bg-[#E8D5C4] disabled:opacity-30 transition-all shadow-sm"
-                 >
-                   <span className="font-black text-sm">←</span>
-                 </button>
-              </div>
-
-              <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-                {currentItem.itemImage ? (
-                  <img src={currentItem.itemImage} alt={currentItem.name} className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon size={48} className="text-[#E8D5C4]" />
-                )}
-              </div>
-
-              <div className="flex-1 w-full flex flex-col items-center md:items-start text-center md:text-left">
-                <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-3">
-                  <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">
-                    CMD: {currentItem.orderNumber}
-                  </span>
-                </div>
+              <div className="flex flex-col md:flex-row items-center gap-3">
+                <input
+                  ref={inputRef}
+                  type="number"
+                  step="0.01"
+                  value={prixSaisi}
+                  onChange={(e) => setPrixSaisi(e.target.value)}
+                  onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                  placeholder="0.00"
+                  className="w-full md:w-32 p-4 text-2xl font-black text-center text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996]"
+                />
                 
-                <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] leading-tight mb-2">
-                  {currentItem.customerName}
-                </h2>
-                
-                <p className="text-sm font-bold text-[#B8A99A] mb-6">
-                  {currentItem.name || "Article sans nom"} • {currentItem.category} • {currentItem.size} / {currentItem.color}
-                </p>
+                <select
+                  value={sourceSaisie}
+                  onChange={(e) => setSourceSaisie(e.target.value)}
+                  className="w-full md:flex-1 p-4 rounded-2xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-md"
+                >
+                  {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
+                </select>
 
-                <div className="w-full relative p-4 rounded-2xl transition-colors bg-[#FAF7F2]/50 border border-[#E8D5C4]/40">
-                  <label className="text-[10px] uppercase font-bold mb-2 block tracking-widest text-[#D4B996]">
-                    Saisir Prix d'Achat (en Euros) & Source
-                  </label>
-                  
-                  <div className="flex flex-col md:flex-row items-center gap-3 w-full">
-                    {/* NOUVEAU FORMULAIRE AVEC LE MENU DÉROULANT DE LA CARTE */}
-                    <form 
-                      onSubmit={(e) => { e.preventDefault(); soumettrePrix(currentItem); }}
-                      className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto"
-                    >
-                      <div className="flex items-center gap-2 w-full md:w-auto">
-                        <input
-                          ref={inputRef}
-                          type="number"
-                          step="0.01"
-                          value={prixSaisi}
-                          onChange={(e) => setPrixSaisi(e.target.value)}
-                          onKeyDown={(e) => handleValiderPrix(e, currentItem)}
-                          placeholder="Ex: 12.50"
-                          className="w-full md:w-36 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all"
-                        />
-                        <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
-                      </div>
-
-                      <select
-                        value={sourceSaisie}
-                        onChange={(e) => setSourceSaisie(e.target.value)}
-                        className="w-full md:w-48 p-4 md:p-5 rounded-2xl bg-white border border-[#E8D5C4]/50 outline-none text-[11px] font-bold text-[#8D7B68] shadow-md cursor-pointer hover:bg-[#FAF7F2] transition-colors"
-                      >
-                        {Object.keys(PURCHASE_SOURCES).map(key => (
-                          <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
-                        ))}
-                      </select>
-                      
-                      <button 
-                        type="submit"
-                        disabled={prixSaisi === ""}
-                        className="md:hidden w-full p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
-                      >
-                        VALIDER
-                      </button>
-                    </form>
-
-                    <div className="hidden md:block w-px h-12 bg-[#E8D5C4]/50 mx-2"></div>
-
-                    {/* BOUTON GRATUIT */}
-                    <button 
-                      onClick={() => soumettrePrix(currentItem, 0)}
-                      className="w-full md:w-auto p-4 md:p-5 bg-white border-2 border-pink-200 text-pink-500 rounded-2xl font-black shadow-sm hover:bg-pink-50 hover:border-pink-300 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Sparkles size={18} /> C'est Gratuit (0€)
-                    </button>
-                  </div>
-                </div>
+                <button onClick={() => soumettrePrix(currentItem)} className="hidden md:flex p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md hover:scale-105 transition-transform">OK</button>
               </div>
-
-              <div className="md:flex flex-col items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
-                 <button 
-                   onClick={() => setIndexActuel(prev => prev < articlesAPricer.length - 1 ? prev + 1 : 0)}
-                   className="w-full md:w-auto px-4 py-3 md:p-4 bg-white border border-[#E8D5C4] shadow-sm rounded-xl md:rounded-full text-[#8D7B68] hover:bg-[#FAF7F2] transition-all flex items-center justify-center gap-2"
-                 >
-                   <span className="text-[10px] uppercase font-bold md:hidden">Passer l'article</span>
-                   <span className="font-black text-sm hidden md:block">→</span>
-                 </button>
-                 <p className="text-[8px] text-gray-400 uppercase font-bold hidden md:block mt-2">Passer</p>
-              </div>
-
             </div>
-          )}
-        </>
+            
+            <button onClick={() => soumettrePrix(currentItem, 0)} className="mt-3 w-full py-2 text-[10px] font-black uppercase text-pink-400 hover:text-pink-600 transition-colors">🎁 Marquer comme Gratuit</button>
+          </div>
+
+          <button onClick={() => setIndexActuel(prev => prev + 1)} className="p-4 bg-white border border-[#E8D5C4] rounded-full text-[#8D7B68] shadow-sm hover:bg-[#FAF7F2]">
+            <span className="font-black">→</span>
+          </button>
+        </div>
       )}
     </div>
   );
