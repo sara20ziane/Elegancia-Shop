@@ -695,7 +695,7 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
 // --- COMPOSANT : STATION DE PRIX D'ACHAT ---
 const StationPrixAchat = ({ orders, showToast }) => {
   const [prixSaisi, setPrixSaisi] = useState("");
-  const [sourceSaisie, setSourceSaisie] = useState("CC 500");
+  const [sourceSaisie, setSourceSaisie] = useState("CB");
   const [dateAchat, setDateAchat] = useState(new Date().toISOString().split("T")[0]);
   const [lotSaisi, setLotSaisi] = useState("");
   const [indexActuel, setIndexActuel] = useState(0);
@@ -2756,7 +2756,7 @@ const OrderModal = ({
                       </div>
                       <select
   className="col-span-1 md:w-32 p-2 md:p-1.5 rounded-lg bg-[#FAF7F2] border border-[#E8D5C4]/50 outline-none text-[9px] font-bold text-[#8D7B68] shadow-sm cursor-pointer"
-  value={item.purchaseSource || "CC 500"}
+  value={item.purchaseSource || "CB"}
   onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, purchaseSource: e.target.value } : oi))}
 >
   {Object.keys(PURCHASE_SOURCES).map(key => (
