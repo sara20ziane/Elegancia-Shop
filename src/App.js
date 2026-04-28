@@ -1499,12 +1499,24 @@ const MainApp = ({ user }) => {
       return;
     }
 
+    // 1. Calcul du poids total de la commande (hors articles retournés)
+    const totalWeightGrams = (order.items || []).reduce((sum, item) => {
+      if (item.status === "Retourné Fournisseur") return sum;
+      return sum + (parseFloat(item.weightG) || 0);
+    }, 0);
+    
+    // Formatage du poids (en Kg s'il est supérieur à 0)
+    const weightStr = totalWeightGrams > 0 
+      ? `${(totalWeightGrams / 1000).toFixed(2)} Kg` 
+      : `0 Kg`;
+
     const phoneStr = customer.phone2 ? `${customer.phone} / ${customer.phone2}` : customer.phone;
     const deliveryStr = customer.deliveryMode === 'stopdesk' 
       ? `Stopdesk (${customer.stopdeskName || ''})` 
       : 'Domicile';
 
-    const textToCopy = `${customer.name} - ${phoneStr} - ${customer.wilaya} - ${customer.commune} - ${deliveryStr}`;
+    // 2. Ajout du N° de commande et du Poids dans le texte à copier
+    const textToCopy = `CMD: ${order.orderNumber} - ${customer.name} - ${phoneStr} - ${customer.wilaya} - ${customer.commune} - ${deliveryStr} - Poids: ${weightStr}`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
       showToast("Infos copiées pour le livreur ! 📋", "success");
