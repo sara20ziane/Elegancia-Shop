@@ -60,7 +60,8 @@ import {
   UploadCloud,
   Image as ImageIcon,
   Scale,
-  Copy
+  Copy,
+  Tag // <-- AJOUTE CECI
 } from "lucide-react";
 import {
   LineChart,
@@ -1530,7 +1531,7 @@ const MainApp = ({ user }) => {
           <SidebarItem active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={LayoutDashboard} label="Tableau de bord" />
           <SidebarItem active={activeTab === "orders"} onClick={() => setActiveTab("orders")} icon={Package} label="Commandes" badge={lateDeliveries.length} />
           <SidebarItem active={activeTab === "pesee"} onClick={() => setActiveTab("pesee")} icon={Scale} label="Station Pesée" />
-          <SidebarItem active={activeTab === "prix"} onClick={() => setActiveTab("prix")} icon={Euro} label="Station Prix" />
+          <SidebarItem active={activeTab === "prix"} onClick={() => setActiveTab("prix")} icon={Tag} label="Station Prix" />
           <SidebarItem active={activeTab === "gallery"} onClick={() => setActiveTab("gallery")} icon={ImageIcon} label="Galerie" />
           <SidebarItem active={activeTab === "customers"} onClick={() => setActiveTab("customers")} icon={Users} label="Base Clientes" />
           <SidebarItem active={activeTab === "arrivages"} onClick={() => setActiveTab("arrivages")} icon={Globe} label="Arrivages (Logistique)" />
@@ -2296,22 +2297,22 @@ const MainApp = ({ user }) => {
         )}
       </main>
 
-      {/* MOBILE NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#E8D5C4]/50 flex justify-around items-center px-2 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] z-[900] shadow-[0_-10px_40px_rgba(141,123,104,0.1)] print:hidden">
+      {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-xl border-t border-[#E8D5C4]/50 flex overflow-x-auto custom-scrollbar gap-1 px-2 pt-2 pb-[max(16px,env(safe-area-inset-bottom))] z-[900] shadow-[0_-10px_40px_rgba(141,123,104,0.1)] print:hidden snap-x">
         {[
           { tab: "dashboard", icon: LayoutDashboard, label: "Bord" },
           { tab: "orders", icon: Package, label: "Ventes" },
           { tab: "pesee", icon: Scale, label: "Pesée" },
-          { tab: "prix", icon: Euro, label: "Prix Achat" }, // <-- AJOUT ICI
-          { tab: "gallery", icon: ImageIcon, label: "Galerie" }, 
+          { tab: "prix", icon: Tag, label: "Prix" }, // <-- ICÔNE CHANGÉE ICI
+          { tab: "gallery", icon: ImageIcon, label: "Galerie" },
           { tab: "customers", icon: Users, label: "Clientes" },
           { tab: "arrivages", icon: Globe, label: "Arrivages" },
           { tab: "finances", icon: Euro, label: "Tréso" },
         ].map(({ tab, icon: Icon, label }) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} className={`relative flex flex-col items-center gap-1 p-2 transition-colors ${activeTab === tab ? "text-[#8D7B68]" : "text-[#B8A99A]"}`}>
+          <button key={tab} onClick={() => setActiveTab(tab)} className={`shrink-0 min-w-[64px] snap-center relative flex flex-col items-center gap-1.5 p-2 transition-all ${activeTab === tab ? "text-[#8D7B68] scale-105" : "text-[#B8A99A]"}`}>
             <Icon size={20} />
             {tab === "orders" && lateDeliveries.length > 0 && <span className="absolute top-1 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>}
-            <span className="text-[8px] font-bold">{label}</span>
+            <span className="text-[9px] font-bold">{label}</span>
           </button>
         ))}
       </nav>
