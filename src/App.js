@@ -701,6 +701,10 @@ const StationPrixAchat = ({ orders, showToast }) => {
   const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
+  // Le verrou de sécurité : le lot doit être rempli
+  const isLotDefini = lotSaisi.trim() !== "";
+
+  // 1. Récupérer les articles sans prix d'achat
   const articlesAPricer = React.useMemo(() => {
     let list = [];
     orders.forEach((o) => {
@@ -724,10 +728,16 @@ const StationPrixAchat = ({ orders, showToast }) => {
   }, [articlesAPricer.length, indexActuel]);
 
   React.useEffect(() => {
-    if (inputRef.current) inputRef.current.focus();
-  }, [indexActuel, articlesAPricer]);
+    if (isLotDefini && inputRef.current) inputRef.current.focus();
+  }, [indexActuel, articlesAPricer, isLotDefini]);
 
+  // FONCTION POUR SAUVEGARDER
   const soumettrePrix = async (currentItem, prixForce = null) => {
+    if (!isLotDefini) {
+      showToast("⚠️ Remplis l'identifiant du Lot en haut pour commencer !", "error");
+      return;
+    }
+
     const prixAEnregistrer = prixForce !== null ? prixForce : prixSaisi;
     if (prixAEnregistrer === "") return;
 
@@ -740,17 +750,16 @@ const StationPrixAchat = ({ orders, showToast }) => {
             priceAchatEuro: parseFloat(prixAEnregistrer), 
             prixAchatSaisi: true,
             purchaseSource: prixForce === 0 ? "CB" : sourceSaisie,
-            supplierDate: dateAchat, // Enregistre la date du site
-            supplierLot: lotSaisi     // Enregistre le lot
+            supplierDate: dateAchat, 
+            supplierLot: lotSaisi
           };
         }
         return it;
       });
 
       await updateDoc(orderRef, { items: updatedItems });
-      showToast(`Validé : ${prixAEnregistrer}€ | ${PURCHASE_SOURCES[sourceSaisie].label}`);
+      showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Validé : ${prixAEnregistrer}€ | ${PURCHASE_SOURCES[sourceSaisie].label}`);
       setPrixSaisi("");
-      // On garde sourceSaisie, dateAchat et lotSaisi pour l'article suivant (gain de temps !)
     } catch (error) {
       showToast("Erreur lors de la sauvegarde", "error");
     }
@@ -767,23 +776,29 @@ const StationPrixAchat = ({ orders, showToast }) => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 animate-in zoom-in-95 mt-2 md:mt-4">
-      {/* EN-TÊTE */}
+      {/* EN-TÊTE : Assignation du Lot */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2 bg-white p-4 rounded-[1.5rem] border border-[#E8D5C4]/40 shadow-sm">
         <div className="flex flex-col">
           <h3 className="font-serif text-[#8D7B68] text-sm md:text-lg font-bold flex items-center gap-2 uppercase tracking-widest shrink-0">
             <Tag size={20} className="text-[#D4B996]"/> Station Achats & Prix
           </h3>
-          <p className="text-[9px] font-bold text-gray-400 mt-1">Saisis le prix, la carte et le lot de commande en une seule fois.</p>
+          <p className="text-[9px] font-bold text-gray-400 mt-1">Étape 1 : Saisis la date et le lot de commande en haut.</p>
         </div>
         
-        <div className="flex gap-2">
-            <div className="flex flex-col items-end">
-                <span className="text-[8px] uppercase font-black text-gray-300">Date d'achat Site</span>
-                <input type="date" value={dateAchat} onChange={(e) => setDateAchat(e.target.value)} className="p-2 rounded-lg text-[10px] font-bold text-[#8D7B68] bg-[#FAF7F2] border border-[#E8D5C4]/30 outline-none" />
+        <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-col flex-1 md:flex-none">
+                <span className="text-[8px] uppercase font-black text-gray-400 mb-1 ml-1">Date commande</span>
+                <input type="date" value={dateAchat} onChange={(e) => setDateAchat(e.target.value)} className="p-3 rounded-xl text-xs font-bold text-[#8D7B68] bg-[#FAF7F2] border border-[#E8D5C4]/40 outline-none w-full shadow-sm" />
             </div>
-            <div className="flex flex-col items-end">
-                <span className="text-[8px] uppercase font-black text-gray-300">Identifiant / Lot</span>
-                <input type="text" placeholder="ex: Lot 1" value={lotSaisi} onChange={(e) => setLotSaisi(e.target.value)} className="p-2 rounded-lg text-[10px] font-bold text-[#8D7B68] bg-[#FAF7F2] border border-[#E8D5C4]/30 outline-none w-24" />
+            <div className="flex flex-col flex-1 md:flex-none">
+                <span className={`text-[8px] uppercase font-black mb-1 ml-1 ${!isLotDefini ? "text-red-400" : "text-gray-400"}`}>Identifiant / Lot</span>
+                <input 
+                  type="text" 
+                  placeholder="Ex: Lot Matin" 
+                  value={lotSaisi} 
+                  onChange={(e) => setLotSaisi(e.target.value)} 
+                  className={`p-3 rounded-xl text-xs font-bold outline-none w-full shadow-sm transition-colors ${!isLotDefini ? "bg-red-50 border border-red-200 text-red-500 animate-pulse placeholder:text-red-300" : "bg-[#FAF7F2] border border-[#E8D5C4]/40 text-[#8D7B68]"}`} 
+                />
             </div>
         </div>
       </div>
@@ -795,50 +810,99 @@ const StationPrixAchat = ({ orders, showToast }) => {
           <p className="text-sm font-bold text-[#B8A99A]">Aucun article en attente de prix d'achat.</p>
         </div>
       ) : (
-        <div className="p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors bg-white border-[#E8D5C4]/30">
+        <div className={`p-6 md:p-8 rounded-[2rem] shadow-xl border flex flex-col md:flex-row gap-6 md:gap-8 items-center relative overflow-hidden transition-colors ${isLotDefini ? "bg-white border-[#E8D5C4]/30" : "bg-red-50/20 border-red-200"} mt-6`}>
           
+          <div className="hidden md:flex flex-col items-center gap-4">
+             <button 
+               onClick={() => setIndexActuel(prev => Math.max(0, prev - 1))}
+               disabled={indexActuel === 0}
+               className="p-3 bg-[#FAF7F2] rounded-full text-[#8D7B68] hover:bg-[#E8D5C4] disabled:opacity-30 transition-all shadow-sm"
+             >
+               <span className="font-black text-sm">←</span>
+             </button>
+          </div>
+
           <div className="w-32 h-32 md:w-56 md:h-56 rounded-2xl bg-[#FAF7F2] border border-[#E8D5C4]/50 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
             {currentItem.itemImage ? <img src={currentItem.itemImage} className="w-full h-full object-cover" /> : <ImageIcon size={48} className="text-[#E8D5C4]" />}
           </div>
 
           <div className="flex-1 w-full text-center md:text-left">
             <span className="bg-gray-50 px-3 py-1 rounded-lg text-[10px] font-black uppercase text-gray-400 border border-gray-100">CMD: {currentItem.orderNumber}</span>
-            <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] mt-2">{currentItem.customerName}</h2>
+            <h2 className="text-2xl md:text-4xl font-serif font-black text-[#8D7B68] mt-2 mb-2">{currentItem.customerName}</h2>
             <p className="text-sm font-bold text-[#B8A99A] mb-6">{currentItem.name || "Article"} • {currentItem.size} / {currentItem.color}</p>
 
-            <div className="bg-[#FAF7F2]/50 p-4 rounded-2xl border border-[#E8D5C4]/40">
-              <label className="text-[10px] uppercase font-bold mb-2 block tracking-widest text-[#D4B996]">Prix d'achat & Carte</label>
+            <div className={`w-full relative p-4 rounded-2xl transition-colors ${isLotDefini ? "bg-[#FAF7F2]/50 border border-[#E8D5C4]/40" : "bg-white border border-red-200"}`}>
+              <label className={`text-[10px] uppercase font-bold mb-2 block tracking-widest ${isLotDefini ? "text-[#D4B996]" : "text-red-500"}`}>
+                {isLotDefini ? "Prix d'achat & Carte" : "STOP : SAISIS LE LOT EN HAUT"}
+              </label>
               
               <div className="flex flex-col md:flex-row items-center gap-3">
-                <input
-                  ref={inputRef}
-                  type="number"
-                  step="0.01"
-                  value={prixSaisi}
-                  onChange={(e) => setPrixSaisi(e.target.value)}
-                  onKeyDown={(e) => handleValiderPrix(e, currentItem)}
-                  placeholder="0.00"
-                  className="w-full md:w-32 p-4 text-2xl font-black text-center text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996]"
-                />
-                
-                <select
-                  value={sourceSaisie}
-                  onChange={(e) => setSourceSaisie(e.target.value)}
-                  className="w-full md:flex-1 p-4 rounded-2xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-md"
+                <form 
+                  onSubmit={(e) => { e.preventDefault(); soumettrePrix(currentItem); }}
+                  className="flex flex-col md:flex-row items-center gap-3 w-full"
                 >
-                  {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
-                </select>
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <input
+                      ref={inputRef}
+                      type="number"
+                      step="0.01"
+                      value={prixSaisi}
+                      onChange={(e) => setPrixSaisi(e.target.value)}
+                      onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                      disabled={!isLotDefini}
+                      placeholder="0.00"
+                      className="w-full md:w-36 p-4 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] disabled:opacity-50 transition-all"
+                    />
+                    <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
+                  </div>
 
-                <button onClick={() => soumettrePrix(currentItem)} className="hidden md:flex p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md hover:scale-105 transition-transform">OK</button>
+                  <select
+                    value={sourceSaisie}
+                    onChange={(e) => setSourceSaisie(e.target.value)}
+                    disabled={!isLotDefini}
+                    className="w-full md:w-48 p-4 md:p-5 rounded-2xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-md cursor-pointer disabled:opacity-50 hover:bg-[#FAF7F2] transition-colors"
+                  >
+                    {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
+                  </select>
+
+                  <button 
+                    type="submit"
+                    disabled={!isLotDefini || prixSaisi === ""}
+                    className="hidden md:flex p-4 md:p-5 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 transition-transform"
+                  >
+                    OK
+                  </button>
+
+                  <button 
+                    type="submit"
+                    disabled={!isLotDefini || prixSaisi === ""}
+                    className="md:hidden w-full p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
+                  >
+                    VALIDER
+                  </button>
+                </form>
               </div>
             </div>
             
-            <button onClick={() => soumettrePrix(currentItem, 0)} className="mt-3 w-full py-2 text-[10px] font-black uppercase text-pink-400 hover:text-pink-600 transition-colors">🎁 Marquer comme Gratuit</button>
+            <button 
+              onClick={() => soumettrePrix(currentItem, 0)} 
+              disabled={!isLotDefini}
+              className="mt-3 w-full py-2 text-[10px] font-black uppercase text-pink-400 disabled:opacity-30 hover:text-pink-600 transition-colors"
+            >
+              🎁 Marquer comme Gratuit
+            </button>
           </div>
 
-          <button onClick={() => setIndexActuel(prev => prev + 1)} className="p-4 bg-white border border-[#E8D5C4] rounded-full text-[#8D7B68] shadow-sm hover:bg-[#FAF7F2]">
-            <span className="font-black">→</span>
-          </button>
+          <div className="md:flex flex-col items-center gap-2 mt-4 md:mt-0 w-full md:w-auto">
+             <button 
+               onClick={() => setIndexActuel(prev => prev < articlesAPricer.length - 1 ? prev + 1 : 0)}
+               className="w-full md:w-auto px-4 py-3 md:p-4 bg-white border border-[#E8D5C4] shadow-sm rounded-xl md:rounded-full text-[#8D7B68] hover:bg-[#FAF7F2] transition-all flex items-center justify-center gap-2"
+             >
+               <span className="text-[10px] uppercase font-bold md:hidden">Passer l'article</span>
+               <span className="font-black text-sm hidden md:block">→</span>
+             </button>
+             <p className="text-[8px] text-gray-400 uppercase font-bold hidden md:block mt-2">Passer</p>
+          </div>
         </div>
       )}
     </div>
