@@ -1006,20 +1006,6 @@ const MainApp = ({ user }) => {
       showToast("Erreur lors de la mise à jour du statut", "error");
     }
   };
-      // Exécuter la mise à jour pour chaque commande impactée
-      for (const orderId in updatesByOrder) {
-        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
-        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
-      }
-
-      showToast(`${selectedGalleryItems.length} photo(s) retirée(s) avec succès`);
-      setIsGallerySelectionMode(false);
-      setSelectedGalleryItems([]);
-    } catch (error) {
-      console.error(error);
-      showToast("Erreur lors de la suppression des photos", "error");
-    }
-  };
 
   useEffect(() => {
     const path = (coll) => collection(db, "artifacts", appId, "public", "data", coll);
