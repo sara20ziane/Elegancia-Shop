@@ -694,6 +694,7 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
 // --- COMPOSANT : STATION DE PRIX D'ACHAT ---
 const StationPrixAchat = ({ orders, showToast }) => {
   const [prixSaisi, setPrixSaisi] = useState("");
+  const [sourceSaisie, setSourceSaisie] = useState("CC 500"); // <-- NOUVEAU : On stocke la carte choisie
   const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
@@ -742,15 +743,17 @@ const StationPrixAchat = ({ orders, showToast }) => {
           return { 
             ...it, 
             priceAchatEuro: parseFloat(prixAEnregistrer), 
-            prixAchatSaisi: true // Ce flag dit au système : "Sara a validé ce prix, même si c'est 0"
+            prixAchatSaisi: true, // Ce flag dit au système : "Sara a validé ce prix, même si c'est 0"
+            purchaseSource: prixForce === 0 ? "CB" : sourceSaisie // <-- NOUVEAU : On enregistre la carte cadeau utilisée
           };
         }
         return it;
       });
 
       await updateDoc(orderRef, { items: updatedItems });
-      showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Prix validé : ${prixAEnregistrer} €`);
+      showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Prix validé : ${prixAEnregistrer} € avec ${PURCHASE_SOURCES[sourceSaisie].label}`);
       setPrixSaisi("");
+      // Note: On ne vide pas `sourceSaisie`, ça permet de rester sur CC 500 pour enchaîner les articles
     } catch (error) {
       showToast("Erreur lors de la sauvegarde", "error");
     }
@@ -829,32 +832,45 @@ const StationPrixAchat = ({ orders, showToast }) => {
 
                 <div className="w-full relative p-4 rounded-2xl transition-colors bg-[#FAF7F2]/50 border border-[#E8D5C4]/40">
                   <label className="text-[10px] uppercase font-bold mb-2 block tracking-widest text-[#D4B996]">
-                    Saisir Prix d'Achat (en Euros)
+                    Saisir Prix d'Achat (en Euros) & Source
                   </label>
                   
                   <div className="flex flex-col md:flex-row items-center gap-3 w-full">
+                    {/* NOUVEAU FORMULAIRE AVEC LE MENU DÉROULANT DE LA CARTE */}
                     <form 
                       onSubmit={(e) => { e.preventDefault(); soumettrePrix(currentItem); }}
-                      className="flex items-center gap-3 w-full md:w-auto"
+                      className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto"
                     >
-                      <input
-                        ref={inputRef}
-                        type="number"
-                        step="0.01"
-                        value={prixSaisi}
-                        onChange={(e) => setPrixSaisi(e.target.value)}
-                        onKeyDown={(e) => handleValiderPrix(e, currentItem)}
-                        placeholder="Ex: 12.50"
-                        className="w-full md:w-48 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all"
-                      />
-                      <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
+                      <div className="flex items-center gap-2 w-full md:w-auto">
+                        <input
+                          ref={inputRef}
+                          type="number"
+                          step="0.01"
+                          value={prixSaisi}
+                          onChange={(e) => setPrixSaisi(e.target.value)}
+                          onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                          placeholder="Ex: 12.50"
+                          className="w-full md:w-36 p-4 md:p-5 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] transition-all"
+                        />
+                        <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
+                      </div>
+
+                      <select
+                        value={sourceSaisie}
+                        onChange={(e) => setSourceSaisie(e.target.value)}
+                        className="w-full md:w-48 p-4 md:p-5 rounded-2xl bg-white border border-[#E8D5C4]/50 outline-none text-[11px] font-bold text-[#8D7B68] shadow-md cursor-pointer hover:bg-[#FAF7F2] transition-colors"
+                      >
+                        {Object.keys(PURCHASE_SOURCES).map(key => (
+                          <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
+                        ))}
+                      </select>
                       
                       <button 
                         type="submit"
                         disabled={prixSaisi === ""}
-                        className="md:hidden p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
+                        className="md:hidden w-full p-4 bg-[#8D7B68] text-white rounded-2xl font-black shadow-md disabled:opacity-50 active:scale-95 transition-transform"
                       >
-                        OK
+                        VALIDER
                       </button>
                     </form>
 
