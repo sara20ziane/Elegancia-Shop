@@ -151,6 +151,15 @@ const DELIVERY_TARIFFS = {
   "In Guezzam": { dom: 1300, stop: 1300 },
 };
 
+const PURCHASE_SOURCES = {
+  "CC 500": { label: "🎁 CC 500 (-17%)", ratio: 415 / 500 },
+  "CC 400": { label: "🎁 CC 400 (-16%)", ratio: 335 / 400 },
+  "CC 300": { label: "🎁 CC 300 (-15%)", ratio: 255 / 300 },
+  "CC 200": { label: "🎁 CC 200 (-12.5%)", ratio: 175 / 200 },
+  "CC 100": { label: "🎁 CC 100 (-10%)", ratio: 90 / 100 },
+  "CB": { label: "💳 CB / Sans Remise", ratio: 1.0 },
+};
+
 const orderStatusesList = [
   "A commander","Réservée","Payée une partie","Payée",
   "En cours de livraison","Livrée sans paiement","Payée et livrée","Annulée",
@@ -1059,32 +1068,40 @@ const MainApp = ({ user }) => {
   };
 
   const calculateTotals = (items, shipNat, orderDate) => {
-    const rateEur = getRateForDate(orderDate || new Date());
-    let venteTotal = 0, costOfGoods = 0;
-    const processed = items?.map((it) => {
-      const stats = getArrivageStats(it.arrivageId);
-      let itAchatDA = (parseFloat(it.priceAchatEuro) || 0) * rateEur;
-      const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
-      let itVente = parseFloat(it.priceVente) || 0;
+  const rateEur = getRateForDate(orderDate || new Date());
+  let venteTotal = 0, costOfGoods = 0;
+  
+  const processed = items?.map((it) => {
+    const stats = getArrivageStats(it.arrivageId);
+    
+    // --- NOUVEAU: CALCUL DU PRIX RÉEL SELON LA CARTE CADEAU ---
+    const source = PURCHASE_SOURCES[it.purchaseSource] || PURCHASE_SOURCES["CB"];
+    const realAchatEuro = (parseFloat(it.priceAchatEuro) || 0) * source.ratio;
+    
+    // Le coût en DA se base désormais sur l'Euro Réel Payé !
+    let itAchatDA = realAchatEuro * rateEur; 
+    const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
+    let itVente = parseFloat(it.priceVente) || 0;
 
-      if (it.status === "Retourné Fournisseur") {
-        if (it.sheinRembourse) itAchatDA = 0;
-        if (it.responsableRetour === "cliente") {
-          const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
-          itVente = fraisAChargeCliente;
-        } else {
-          itVente = 0;
-        }
+    if (it.status === "Retourné Fournisseur") {
+      if (it.sheinRembourse) itAchatDA = 0;
+      if (it.responsableRetour === "cliente") {
+        const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
+        itVente = fraisAChargeCliente;
+      } else {
+        itVente = 0;
       }
+    }
 
-      venteTotal += itVente;
-      costOfGoods += itAchatDA + itLogInt;
+    venteTotal += itVente;
+    costOfGoods += itAchatDA + itLogInt;
 
-      return { ...it, itAchatDA, itLogInt, itBenefit: itVente - (itAchatDA + itLogInt) };
-    }) || [];
+    // On sauvegarde "realAchatEuro" pour l'afficher dans les statistiques
+    return { ...it, itAchatDA, itLogInt, realAchatEuro, itBenefit: itVente - (itAchatDA + itLogInt) };
+  }) || [];
 
-    return { venteTotal, benefit: venteTotal - costOfGoods, processed };
-  };
+  return { venteTotal, benefit: venteTotal - costOfGoods, processed };
+};
 
   const getCalculatedWeightForArrivage = (arrivageId) => {
     let totalG = 0;
@@ -2611,6 +2628,15 @@ const OrderModal = ({
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
                         <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
                       </div>
+                      <select
+  className="col-span-1 md:w-32 p-2 md:p-1.5 rounded-lg bg-[#FAF7F2] border border-[#E8D5C4]/50 outline-none text-[9px] font-bold text-[#8D7B68] shadow-sm cursor-pointer"
+  value={item.purchaseSource || "CC 500"}
+  onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, purchaseSource: e.target.value } : oi))}
+>
+  {Object.keys(PURCHASE_SOURCES).map(key => (
+    <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
+  ))}
+</select>      
                       <div className="col-span-2 flex items-center gap-2 mt-1 md:mt-0">
                         <div className="flex items-center gap-1 bg-[#F3E8E2]/40 px-3 py-2.5 md:py-1.5 rounded-lg shadow-sm border border-[#E8D5C4]/60 flex-1">
                           <span className="text-[9px] font-bold text-[#D4B996] uppercase">Vente DA</span>
@@ -3015,7 +3041,16 @@ const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
                   return (
                     <tr key={idx} className="hover:bg-[#FAF7F2]/30">
                       <td className="p-4 font-medium text-[#4A3F35] max-w-[150px] truncate">{item.name || "Article"}</td>
-                      <td className="p-4 text-right">{parseFloat(item.priceAchatEuro || 0).toFixed(2)} €</td>
+                      <td className="p-4 text-right">
+  <div className={item.purchaseSource && item.purchaseSource !== "CB" ? "line-through text-gray-400 text-[10px]" : ""}>
+    {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
+  </div>
+  {item.purchaseSource && item.purchaseSource !== "CB" && (
+    <div className="text-xs font-black text-green-500 mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
+      {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
+    </div>
+  )}
+</td>
                       <td className="p-4 text-right text-gray-500">{formatDA(item.itAchatDA)}</td>
                       <td className="p-4 text-right text-orange-400 font-medium">+{formatDA(item.itLogInt)}</td>
                       <td className="p-4 text-right font-black text-[#8D7B68] bg-[#FAF7F2]/30">{formatDA(cout)}</td>
