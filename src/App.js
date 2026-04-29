@@ -1109,6 +1109,7 @@ const MainApp = ({ user }) => {
   const [orderDiscount, setOrderDiscount] = useState(0);
   const [orderRefundAmount, setOrderRefundAmount] = useState(0);
   const [orderReceiptImage, setOrderReceiptImage] = useState("");
+  const [soldeSiteGlobalEur, setSoldeSiteGlobalEur] = useState("");
   
   // --- NOUVEAUX ÉTATS POUR LA SÉLECTION GALERIE ---
   const [isGallerySelectionMode, setIsGallerySelectionMode] = useState(false);
@@ -1455,7 +1456,23 @@ const MainApp = ({ user }) => {
       const customerId = formData.get("customerId");
       const customer = customers.find((c) => c.id === customerId);
       const selectedDate = new Date(formData.get("orderDate") || new Date());
-      const t = calculateTotals(orderItems, shippingNational, selectedDate);
+      
+      // --- NOUVEAU : RÉPARTITION AUTOMATIQUE DU SOLDE ---
+      const globalSolde = parseFloat(soldeSiteGlobalEur) || 0;
+      const totalAchatEuro = orderItems.reduce((sum, it) => sum + (parseFloat(it.priceAchatEuro) || 0), 0);
+      
+      let itemsWithSolde = orderItems.map(it => {
+        const prix = parseFloat(it.priceAchatEuro) || 0;
+        let partSolde = 0;
+        // On divise proportionnellement le solde global sur chaque article
+        if (totalAchatEuro > 0 && globalSolde > 0) {
+          partSolde = (prix / totalAchatEuro) * globalSolde;
+        }
+        return { ...it, soldeSiteEur: partSolde }; 
+      });
+
+      // On utilise itemsWithSolde pour que le calcul de la marge soit parfait
+      const t = calculateTotals(itemsWithSolde, shippingNational, selectedDate);
       const totalAdvance = orderPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
       // 1. GESTION DU RETOUR FOURNISSEUR
@@ -1508,6 +1525,7 @@ const MainApp = ({ user }) => {
         discount: parseFloat(orderDiscount) || 0,
         refundAmount: parseFloat(orderRefundAmount) || 0,
         receiptImage: orderReceiptImage, 
+        soldeSiteGlobalEur: globalSolde,
       };
 
       // 4. AJOUT D'EXCÉDENT AU PORTEFEUILLE 
@@ -1643,6 +1661,7 @@ const MainApp = ({ user }) => {
     setShippingNational(o.shippingNational || 0);
     setOrderDiscount(o.discount || 0);
     setOrderRefundAmount(o.refundAmount || 0);
+    setSoldeSiteGlobalEur(o.soldeSiteGlobalEur || "");
     const existingDate = o.date?.toDate
       ? o.date.toDate().toISOString().split("T")[0]
       : new Date(o.date || Date.now()).toISOString().split("T")[0];
@@ -1932,6 +1951,7 @@ const MainApp = ({ user }) => {
                     setOrderReceiptImage("");
                     setShowAddOrder(true);
                     setEditingOrder(null);
+                    setSoldeSiteGlobalEur("");
                   }}
                   className="flex-1 md:w-auto px-6 py-4 md:py-2.5 rounded-2xl md:rounded-full text-white bg-[#8D7B68] text-sm font-bold shadow-md hover:-translate-y-1 transition-all flex justify-center items-center gap-2"
                 >
@@ -2534,6 +2554,8 @@ const MainApp = ({ user }) => {
           setOrderRefundAmount={setOrderRefundAmount}
           orderReceiptImage={orderReceiptImage}
           setOrderReceiptImage={setOrderReceiptImage} 
+          soldeSiteGlobalEur={soldeSiteGlobalEur} // <--- AJOUTE CECI
+          setSoldeSiteGlobalEur={setSoldeSiteGlobalEur} // <--- ET CECI
           onClose={() => { setShowAddOrder(false); setEditingOrder(null); }}
         />
       )}
@@ -2633,6 +2655,7 @@ const OrderModal = ({
   shippingNational, setShippingNational, onClose,
   orderDiscount, setOrderDiscount, orderRefundAmount, setOrderRefundAmount,
   orderReceiptImage, setOrderReceiptImage,
+  soldeSiteGlobalEur, setSoldeSiteGlobalEur,
 }) => {
   const [defaultArrivage, setDefaultArrivage] = useState(editingOrder ? orderItems[0]?.arrivageId || "" : "");
   const [newPaymentAmount, setNewPaymentAmount] = useState("");
@@ -2772,10 +2795,9 @@ const OrderModal = ({
                         <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
                       </select>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
-                        <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Poids(g)</span>
-                        <input type="number" placeholder="g" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.weightG}
-                          onChange={(e) => { const val = e.target.value; setOrderItems(orderItems.map((oi) => { if (oi.id === item.id) { let newStatus = oi.status; if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) { newStatus = "Reçu"; } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") { newStatus = "En attente"; } return { ...oi, weightG: val, status: newStatus }; } return oi; })); }} />
-                      </div>
+  <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
+  <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
+</div>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-1 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-32">
     <div className="flex flex-col w-1/2 border-r border-gray-100 pr-1">
       <span className="text-[7px] uppercase font-bold text-gray-400 text-center">Prix(€)</span>
@@ -2867,6 +2889,23 @@ const OrderModal = ({
               >
                 <Plus size={16} /> Ajouter un article
               </button>
+                  <div className="mt-4 flex justify-between items-center gap-2 p-4 bg-orange-50/50 rounded-xl border border-orange-100 shadow-sm">
+                <div>
+                  <span className="block text-[10px] font-black text-orange-500 uppercase tracking-widest">Solde Portefeuille Site (€)</span>
+                  <span className="block text-[9px] font-bold text-orange-400/80 mt-0.5">S'appliquera à toute la commande</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-orange-200 shadow-sm w-32 md:w-40">
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    value={soldeSiteGlobalEur} 
+                    onChange={e => setSoldeSiteGlobalEur(e.target.value)} 
+                    placeholder="Ex: 5.50" 
+                    className="w-full text-right outline-none text-sm font-black text-orange-500"
+                  />
+                  <span className="text-xs font-bold text-orange-400">€</span>
+                </div>
+              </div>
             </div>
 
             {/* PAIEMENTS & RÉSUMÉ */}
