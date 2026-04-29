@@ -2787,6 +2787,7 @@ const OrderModal = ({
                 {orderItems.map((item, index) => (
                   <div key={item.id} className="bg-white border border-[#E8D5C4]/60 p-4 md:p-3 rounded-2xl shadow-sm flex flex-col gap-3 md:gap-2 relative pl-8 pt-6 md:pt-3 shrink-0">
                     <div className="absolute left-2 top-3 md:top-1/2 md:-translate-y-1/2 w-5 h-5 bg-[#FAF7F2] border border-[#E8D5C4] rounded-full flex items-center justify-center text-[9px] font-black text-[#8D7B68]">{index + 1}</div>
+                    
                     <div className="flex flex-col md:flex-row gap-2">
                       <input placeholder="Désignation exacte..." className="w-full md:flex-[2] p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35]" value={item.name} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, name: e.target.value } : oi))} />
                       <div className="grid grid-cols-2 md:flex gap-2 w-full md:w-auto">
@@ -2795,34 +2796,25 @@ const OrderModal = ({
                         <input list="colorList" placeholder="Couleur" className="col-span-1 md:w-24 p-3 md:p-2.5 bg-[#FAF7F2]/50 border border-transparent focus:border-[#D4B996] rounded-xl outline-none text-xs font-bold text-[#4A3F35] text-center" value={item.color} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, color: e.target.value } : oi))} />
                       </div>
                     </div>
+                    
                     <div className="grid grid-cols-2 md:flex flex-wrap md:flex-nowrap gap-2 items-center bg-gray-50/50 p-2 rounded-xl border border-gray-100">
                       <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.arrivageId || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, arrivageId: e.target.value } : oi))}>
                         <option value="">Lié à l'arrivage...</option>
                         {arrivages.map((a) => <option key={a.id} value={a.id}>#{a.number}</option>)}
                       </select>
+                      
                       <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.status || "En attente"} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, status: e.target.value } : oi))}>
                         <option value="En attente">En attente (Chine)</option>
                         <option value="Reçu">Reçu (Algérie)</option>
                         <option value="Livré">Livré cliente</option>
                         <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
                       </select>
-                      <div className="grid grid-cols-2 md:flex flex-wrap md:flex-nowrap gap-2 items-center bg-gray-50/50 p-2 rounded-xl border border-gray-100">
-                      <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.arrivageId || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, arrivageId: e.target.value } : oi))}>
-                        <option value="">Lié à l'arrivage...</option>
-                        {arrivages.map((a) => <option key={a.id} value={a.id}>#{a.number}</option>)}
-                      </select>
-                      <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.status || "En attente"} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, status: e.target.value } : oi))}>
-                        <option value="En attente">En attente (Chine)</option>
-                        <option value="Reçu">Reçu (Algérie)</option>
-                        <option value="Livré">Livré cliente</option>
-                        <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
-                      </select>
+                      
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Poids(g)</span>
                         <input type="number" placeholder="g" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.weightG} onChange={(e) => { const val = e.target.value; setOrderItems(orderItems.map((oi) => { if (oi.id === item.id) { let newStatus = oi.status; if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) { newStatus = "Reçu"; } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") { newStatus = "En attente"; } return { ...oi, weightG: val, status: newStatus }; } return oi; })); }} />
                       </div>
 
-                      {/* 👇 VOICI LA SEULE ET UNIQUE CASE D'ACHAT 👇 */}
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
                         <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
                         <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
@@ -2837,6 +2829,7 @@ const OrderModal = ({
                           <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
                         ))}
                       </select>      
+                      
                       <div className="col-span-2 flex items-center gap-2 mt-1 md:mt-0">
                         <div className="flex items-center gap-1 bg-[#F3E8E2]/40 px-3 py-2.5 md:py-1.5 rounded-lg shadow-sm border border-[#E8D5C4]/60 flex-1">
                           <span className="text-[9px] font-bold text-[#D4B996] uppercase">Vente DA</span>
@@ -2846,31 +2839,22 @@ const OrderModal = ({
                         <button type="button" onClick={() => setOrderItems(orderItems.filter((oi) => oi.id !== item.id))} className="text-red-400 bg-red-50 hover:bg-red-100 p-2.5 md:p-1.5 rounded-lg transition-colors shadow-sm"><Trash2 size={16} /></button>
                       </div>
                     </div>
-         {/* LIEN AVEC LA COMMANDE SITE */}
-<div className="mt-2 flex items-center gap-2 bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-[#E8D5C4]/30">
-  <ShoppingCart size={14} className="text-[#B8A99A] shrink-0"/>
-  <span className="text-[10px] font-bold text-[#B8A99A] uppercase tracking-widest hidden md:inline">Cmd Site :</span>
-  <input 
-    type="date" 
-    value={item.supplierDate || ""} 
-    onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierDate: e.target.value } : oi))} 
-    className="p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white"
-  />
-  <input 
-    type="text" 
-    placeholder="Identifiant (ex: Lot 1, Solde...)" 
-    value={item.supplierLot || ""} 
-    onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierLot: e.target.value } : oi))} 
-    className="flex-1 p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white"
-  />
-</div>
+
+                    {/* LIEN AVEC LA COMMANDE SITE */}
+                    <div className="mt-2 flex items-center gap-2 bg-[#FAF7F2]/50 p-2.5 rounded-xl border border-[#E8D5C4]/30">
+                      <ShoppingCart size={14} className="text-[#B8A99A] shrink-0"/>
+                      <span className="text-[10px] font-bold text-[#B8A99A] uppercase tracking-widest hidden md:inline">Cmd Site :</span>
+                      <input type="date" value={item.supplierDate || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierDate: e.target.value } : oi))} className="p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white" />
+                      <input type="text" placeholder="Identifiant (ex: Lot 1, Solde...)" value={item.supplierLot || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, supplierLot: e.target.value } : oi))} className="flex-1 p-1.5 rounded-lg text-[10px] font-bold text-[#8D7B68] outline-none shadow-sm border border-transparent focus:border-[#D4B996] bg-white" />
+                    </div>
+
                     {item.status === "Retourné Fournisseur" && (
                       <div className="flex flex-col gap-3 mt-3 p-3 md:p-4 bg-red-50/50 rounded-xl border border-red-100 animate-in fade-in">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-red-100">
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest ml-1">Responsable du retour</label>
                             <select className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white text-[#4A3F35]" value={item.responsableRetour || "boutique"} onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, responsableRetour: e.target.value } : oi))}>
-                              <option value="boutique">Erreur ELEGANCIA SHOP / Shein</option>
+                              <option value="boutique">Erreur Yuna's Shop / Shein</option>
                               <option value="cliente">Changement d'avis (Cliente)</option>
                             </select>
                           </div>
@@ -2904,7 +2888,8 @@ const OrderModal = ({
               >
                 <Plus size={16} /> Ajouter un article
               </button>
-                  <div className="mt-4 flex justify-between items-center gap-2 p-4 bg-orange-50/50 rounded-xl border border-orange-100 shadow-sm">
+
+              <div className="mt-4 flex justify-between items-center gap-2 p-4 bg-orange-50/50 rounded-xl border border-orange-100 shadow-sm">
                 <div>
                   <span className="block text-[10px] font-black text-orange-500 uppercase tracking-widest">Solde Portefeuille Site (€)</span>
                   <span className="block text-[9px] font-bold text-orange-400/80 mt-0.5">S'appliquera à toute la commande</span>
