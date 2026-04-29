@@ -924,7 +924,8 @@ const StationPrixAchat = ({ orders, showToast }) => {
   );
 };
 // --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-const AchatsTab = ({ orders }) => {
+// --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
+const AchatsTab = ({ orders, onEditOrder }) => {
   const achatsGroupes = React.useMemo(() => {
     const groups = {};
     orders.forEach(o => {
@@ -939,10 +940,10 @@ const AchatsTab = ({ orders }) => {
               items: [],
               totalAffiche: 0,
               totalReel: 0,
-              totalSolde: 0 // NOUVEAU
+              totalSolde: 0
             };
           }
-          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber });
+          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderObj: o });
           
           const prixEu = parseFloat(it.priceAchatEuro) || 0;
           const soldeEu = parseFloat(it.soldeSiteEur) || 0;
@@ -957,7 +958,6 @@ const AchatsTab = ({ orders }) => {
       });
     });
     
-    // Trier du plus récent au plus ancien
     return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [orders]);
 
@@ -999,11 +999,23 @@ const AchatsTab = ({ orders }) => {
                 
                 <div className="flex-1 overflow-y-auto max-h-32 custom-scrollbar space-y-2 mb-4 pr-1">
                   {groupe.items.map((it, i) => (
-                    <div key={i} className="flex justify-between items-center text-[10px] font-medium text-gray-600 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
-                      <span className="truncate w-3/4 flex gap-1">
-                        <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> {it.name || "Article sans nom"}
+                    <div key={i} className="flex justify-between items-center text-[10px] font-medium text-gray-600 bg-gray-50/50 p-2 rounded-lg border border-gray-100 group">
+                      <span className="truncate flex-1 flex items-center gap-1">
+                        <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> 
+                        <span className="truncate">{it.name || "Article sans nom"}</span>
+                        
+                        {/* 👇 LE BOUTON STYLO EST ICI 👇 */}
+                        <button 
+                          onClick={() => onEditOrder(it.orderObj)} 
+                          className="ml-2 text-[#D4B996] opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white hover:bg-[#FAF7F2] border border-[#E8D5C4]/50 rounded-md shadow-sm"
+                          title="Modifier cet article dans la commande"
+                        >
+                          <Edit3 size={12} />
+                        </button>
                       </span>
-                      <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm">{parseFloat(it.priceAchatEuro || 0).toFixed(2)} €</span>
+                      <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-2">
+                        {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -2494,7 +2506,7 @@ const MainApp = ({ user }) => {
           </div>
         )}
           {/* NOUVEL ONGLET : ACHATS SITES */}
-        {activeTab === "achats" && <AchatsTab orders={orders} />}
+        {activeTab === "achats" && <AchatsTab orders={orders} onEditOrder={openOrderForEdit} />}
       </main>
 
       {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
@@ -2794,40 +2806,43 @@ const OrderModal = ({
                         <option value="Livré">Livré cliente</option>
                         <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
                       </select>
+                      <div className="grid grid-cols-2 md:flex flex-wrap md:flex-nowrap gap-2 items-center bg-gray-50/50 p-2 rounded-xl border border-gray-100">
+                      <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.arrivageId || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, arrivageId: e.target.value } : oi))}>
+                        <option value="">Lié à l'arrivage...</option>
+                        {arrivages.map((a) => <option key={a.id} value={a.id}>#{a.number}</option>)}
+                      </select>
+                      <select className="col-span-2 md:col-span-1 w-full md:w-auto md:flex-1 p-2 md:p-1.5 rounded-lg bg-white border border-gray-100 outline-none text-[11px] md:text-[10px] font-bold text-[#8D7B68] shadow-sm" value={item.status || "En attente"} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, status: e.target.value } : oi))}>
+                        <option value="En attente">En attente (Chine)</option>
+                        <option value="Reçu">Reçu (Algérie)</option>
+                        <option value="Livré">Livré cliente</option>
+                        <option value="Retourné Fournisseur">Retourné (Fournisseur)</option>
+                      </select>
                       <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
-  <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
-  <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
-</div>
-                      <div className="col-span-1 flex items-center gap-1 bg-white px-1 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-32">
-    <div className="flex flex-col w-1/2 border-r border-gray-100 pr-1">
-      <span className="text-[7px] uppercase font-bold text-gray-400 text-center">Prix(€)</span>
-      <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center bg-transparent" value={item.priceAchatEuro || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
-    </div>
-    <div className="flex flex-col w-1/2 pl-1">
-      <span className="text-[7px] uppercase font-bold text-orange-400 text-center">Solde(€)</span>
-      <input type="number" step="0.01" placeholder="-" className="w-full outline-none text-xs font-bold text-center text-orange-400 bg-transparent" value={item.soldeSiteEur || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, soldeSiteEur: e.target.value } : oi))} />
-    </div>
-  </div>
+                        <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Poids(g)</span>
+                        <input type="number" placeholder="g" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.weightG} onChange={(e) => { const val = e.target.value; setOrderItems(orderItems.map((oi) => { if (oi.id === item.id) { let newStatus = oi.status; if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) { newStatus = "Reçu"; } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") { newStatus = "En attente"; } return { ...oi, weightG: val, status: newStatus }; } return oi; })); }} />
+                      </div>
+
+                      {/* 👇 VOICI LA SEULE ET UNIQUE CASE D'ACHAT 👇 */}
+                      <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
+                        <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
+                        <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
+                      </div>
+
                       <select
-  className="col-span-1 md:w-32 p-2 md:p-1.5 rounded-lg bg-[#FAF7F2] border border-[#E8D5C4]/50 outline-none text-[9px] font-bold text-[#8D7B68] shadow-sm cursor-pointer"
-  value={item.purchaseSource || "CB"}
-  onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, purchaseSource: e.target.value } : oi))}
->
-  {Object.keys(PURCHASE_SOURCES).map(key => (
-    <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
-  ))}
-</select>      
+                        className="col-span-1 md:w-32 p-2 md:p-1.5 rounded-lg bg-[#FAF7F2] border border-[#E8D5C4]/50 outline-none text-[9px] font-bold text-[#8D7B68] shadow-sm cursor-pointer"
+                        value={item.purchaseSource || "CB"}
+                        onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, purchaseSource: e.target.value } : oi))}
+                      >
+                        {Object.keys(PURCHASE_SOURCES).map(key => (
+                          <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>
+                        ))}
+                      </select>      
                       <div className="col-span-2 flex items-center gap-2 mt-1 md:mt-0">
                         <div className="flex items-center gap-1 bg-[#F3E8E2]/40 px-3 py-2.5 md:py-1.5 rounded-lg shadow-sm border border-[#E8D5C4]/60 flex-1">
                           <span className="text-[9px] font-bold text-[#D4B996] uppercase">Vente DA</span>
                           <input type="number" className="w-full outline-none text-sm md:text-xs font-black text-[#8D7B68] text-right bg-transparent" value={item.priceVente} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceVente: e.target.value } : oi))} />
                         </div>
-                        <ImageUploader 
-                          compact 
-                          value={item.itemImage} 
-                          path={`orders/${orderNumber}/items`} 
-                          onChange={(url) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, itemImage: url } : oi))} 
-                        />
+                        <ImageUploader compact value={item.itemImage} path={`orders/${orderNumber}/items`} onChange={(url) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, itemImage: url } : oi))} />
                         <button type="button" onClick={() => setOrderItems(orderItems.filter((oi) => oi.id !== item.id))} className="text-red-400 bg-red-50 hover:bg-red-100 p-2.5 md:p-1.5 rounded-lg transition-colors shadow-sm"><Trash2 size={16} /></button>
                       </div>
                     </div>
