@@ -695,16 +695,15 @@ const StationDePesee = ({ orders, arrivages, showToast, onNewArrivage }) => {
 // --- COMPOSANT : STATION DE PRIX D'ACHAT ---
 const StationPrixAchat = ({ orders, showToast }) => {
   const [prixSaisi, setPrixSaisi] = useState("");
+  const [soldeSaisi, setSoldeSaisi] = useState(""); // NOUVEAU
   const [sourceSaisie, setSourceSaisie] = useState("CB");
   const [dateAchat, setDateAchat] = useState(new Date().toISOString().split("T")[0]);
   const [lotSaisi, setLotSaisi] = useState("");
   const [indexActuel, setIndexActuel] = useState(0);
   const inputRef = React.useRef(null);
 
-  // Le verrou de sécurité : le lot doit être rempli
   const isLotDefini = lotSaisi.trim() !== "";
 
-  // 1. Récupérer les articles sans prix d'achat
   const articlesAPricer = React.useMemo(() => {
     let list = [];
     orders.forEach((o) => {
@@ -731,7 +730,6 @@ const StationPrixAchat = ({ orders, showToast }) => {
     if (isLotDefini && inputRef.current) inputRef.current.focus();
   }, [indexActuel, articlesAPricer, isLotDefini]);
 
-  // FONCTION POUR SAUVEGARDER
   const soumettrePrix = async (currentItem, prixForce = null) => {
     if (!isLotDefini) {
       showToast("⚠️ Remplis l'identifiant du Lot en haut pour commencer !", "error");
@@ -748,6 +746,7 @@ const StationPrixAchat = ({ orders, showToast }) => {
           return { 
             ...it, 
             priceAchatEuro: parseFloat(prixAEnregistrer), 
+            soldeSiteEur: parseFloat(soldeSaisi) || 0, // NOUVEAU
             prixAchatSaisi: true,
             purchaseSource: prixForce === 0 ? "CB" : sourceSaisie,
             supplierDate: dateAchat, 
@@ -760,6 +759,7 @@ const StationPrixAchat = ({ orders, showToast }) => {
       await updateDoc(orderRef, { items: updatedItems });
       showToast(prixForce === 0 ? "Article marqué comme gratuit ! 🎁" : `Validé : ${prixAEnregistrer}€ | ${PURCHASE_SOURCES[sourceSaisie].label}`);
       setPrixSaisi("");
+      setSoldeSaisi(""); // NOUVEAU
     } catch (error) {
       showToast("Erreur lors de la sauvegarde", "error");
     }
@@ -776,7 +776,6 @@ const StationPrixAchat = ({ orders, showToast }) => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-4 animate-in zoom-in-95 mt-2 md:mt-4">
-      {/* EN-TÊTE : Assignation du Lot */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-2 bg-white p-4 rounded-[1.5rem] border border-[#E8D5C4]/40 shadow-sm">
         <div className="flex flex-col">
           <h3 className="font-serif text-[#8D7B68] text-sm md:text-lg font-bold flex items-center gap-2 uppercase tracking-widest shrink-0">
@@ -832,8 +831,8 @@ const StationPrixAchat = ({ orders, showToast }) => {
             <p className="text-sm font-bold text-[#B8A99A] mb-6">{currentItem.name || "Article"} • {currentItem.size} / {currentItem.color}</p>
 
             <div className={`w-full relative p-4 rounded-2xl transition-colors ${isLotDefini ? "bg-[#FAF7F2]/50 border border-[#E8D5C4]/40" : "bg-white border border-red-200"}`}>
-              <label className={`text-[10px] uppercase font-bold mb-2 block tracking-widest ${isLotDefini ? "text-[#D4B996]" : "text-red-500"}`}>
-                {isLotDefini ? "Prix d'achat & Carte" : "STOP : SAISIS LE LOT EN HAUT"}
+              <label className={`text-[10px] uppercase font-bold mb-3 block tracking-widest ${isLotDefini ? "text-[#D4B996]" : "text-red-500"}`}>
+                {isLotDefini ? "Saisie Financière" : "STOP : SAISIS LE LOT EN HAUT"}
               </label>
               
               <div className="flex flex-col md:flex-row items-center gap-3">
@@ -842,18 +841,34 @@ const StationPrixAchat = ({ orders, showToast }) => {
                   className="flex flex-col md:flex-row items-center gap-3 w-full"
                 >
                   <div className="flex items-center gap-2 w-full md:w-auto">
-                    <input
-                      ref={inputRef}
-                      type="number"
-                      step="0.01"
-                      value={prixSaisi}
-                      onChange={(e) => setPrixSaisi(e.target.value)}
-                      onKeyDown={(e) => handleValiderPrix(e, currentItem)}
-                      disabled={!isLotDefini}
-                      placeholder="0.00"
-                      className="w-full md:w-36 p-4 text-2xl font-black text-center md:text-left text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] disabled:opacity-50 transition-all"
-                    />
-                    <span className="text-[#B8A99A] font-black text-2xl hidden md:block">€</span>
+                    <div className="relative w-full md:w-36">
+                      <label className="absolute -top-2 left-3 bg-white px-1 text-[8px] uppercase font-bold text-gray-400 rounded-md">Prix Achat (€)</label>
+                      <input
+                        ref={inputRef}
+                        type="number"
+                        step="0.01"
+                        value={prixSaisi}
+                        onChange={(e) => setPrixSaisi(e.target.value)}
+                        onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                        disabled={!isLotDefini}
+                        placeholder="0.00"
+                        className="w-full p-4 pt-5 text-xl font-black text-center text-[#4A3F35] bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-[#D4B996] disabled:opacity-50 transition-all"
+                      />
+                    </div>
+
+                    <div className="relative w-full md:w-36">
+                      <label className="absolute -top-2 left-3 bg-white px-1 text-[8px] uppercase font-bold text-orange-400 rounded-md">Solde Utilisé (€)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={soldeSaisi}
+                        onChange={(e) => setSoldeSaisi(e.target.value)}
+                        onKeyDown={(e) => handleValiderPrix(e, currentItem)}
+                        disabled={!isLotDefini}
+                        placeholder="0.00"
+                        className="w-full p-4 pt-5 text-xl font-black text-center text-orange-400 bg-white rounded-2xl outline-none shadow-md border-2 border-transparent focus:border-orange-300 disabled:opacity-50 transition-all"
+                      />
+                    </div>
                   </div>
 
                   <select
@@ -923,16 +938,21 @@ const AchatsTab = ({ orders }) => {
               lot: it.supplierLot || "Unique",
               items: [],
               totalAffiche: 0,
-              totalReel: 0
+              totalReel: 0,
+              totalSolde: 0 // NOUVEAU
             };
           }
           groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber });
           
           const prixEu = parseFloat(it.priceAchatEuro) || 0;
+          const soldeEu = parseFloat(it.soldeSiteEur) || 0;
+          const prixApresSolde = Math.max(0, prixEu - soldeEu);
+
           groups[key].totalAffiche += prixEu;
+          groups[key].totalSolde += soldeEu;
           
           const ratio = PURCHASE_SOURCES[it.purchaseSource]?.ratio || 1;
-          groups[key].totalReel += prixEu * ratio;
+          groups[key].totalReel += prixApresSolde * ratio;
         }
       });
     });
@@ -947,7 +967,7 @@ const AchatsTab = ({ orders }) => {
          <div className="p-3 bg-white rounded-full shadow-sm"><ShoppingCart size={20} className="text-[#8D7B68]" /></div>
          <div>
            <h3 className="font-serif font-bold text-[#8D7B68] text-lg tracking-widest uppercase">Achats Sites</h3>
-           <p className="text-[10px] font-bold text-[#B8A99A]">Suis tes commandes passées sur les sites et tes dépenses réelles avec les cartes cadeaux.</p>
+           <p className="text-[10px] font-bold text-[#B8A99A]">Suis tes commandes passées sur les sites et tes dépenses réelles avec les cartes cadeaux et soldes.</p>
          </div>
       </div>
 
@@ -993,13 +1013,19 @@ const AchatsTab = ({ orders }) => {
                     <span className="text-[10px] font-bold text-gray-500 uppercase">Panier Affiché (Site)</span>
                     <span className="text-xs font-bold text-gray-400 line-through">{groupe.totalAffiche.toFixed(2)} €</span>
                   </div>
+                  {groupe.totalSolde > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-orange-500 uppercase">Solde Site Utilisé</span>
+                      <span className="text-xs font-bold text-orange-500">- {groupe.totalSolde.toFixed(2)} €</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-[10px] font-bold text-[#8D7B68] uppercase">Coût Réel Déduit (avec CC)</span>
+                    <span className="text-[10px] font-bold text-[#8D7B68] uppercase">Coût Réel (Après CC)</span>
                     <span className="text-xl font-black text-[#8D7B68]">{groupe.totalReel.toFixed(2)} €</span>
                   </div>
                   {economie > 0 && (
                     <div className="text-[10px] font-black text-green-600 bg-green-50 text-center py-1.5 rounded-lg border border-green-100 uppercase tracking-widest shadow-sm">
-                      Économie Réalisée : + {economie.toFixed(2)} €
+                      Économie Globale Réalisée : + {economie.toFixed(2)} €
                     </div>
                   )}
                 </div>
@@ -1190,41 +1216,41 @@ const MainApp = ({ user }) => {
   };
 
   const calculateTotals = (items, shipNat, orderDate) => {
-  const rateEur = getRateForDate(orderDate || new Date());
-  let venteTotal = 0, costOfGoods = 0;
-  
-  const processed = items?.map((it) => {
-    const stats = getArrivageStats(it.arrivageId);
+    const rateEur = getRateForDate(orderDate || new Date());
+    let venteTotal = 0, costOfGoods = 0;
     
-    // --- NOUVEAU: CALCUL DU PRIX RÉEL SELON LA CARTE CADEAU ---
-    const source = PURCHASE_SOURCES[it.purchaseSource] || PURCHASE_SOURCES["CB"];
-    const realAchatEuro = (parseFloat(it.priceAchatEuro) || 0) * source.ratio;
-    
-    // Le coût en DA se base désormais sur l'Euro Réel Payé !
-    let itAchatDA = realAchatEuro * rateEur; 
-    const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
-    let itVente = parseFloat(it.priceVente) || 0;
+    const processed = items?.map((it) => {
+      const stats = getArrivageStats(it.arrivageId);
+      
+      const source = PURCHASE_SOURCES[it.purchaseSource] || PURCHASE_SOURCES["CB"];
+      const prixAchat = parseFloat(it.priceAchatEuro) || 0;
+      const soldeSite = parseFloat(it.soldeSiteEur) || 0;
+      
+      // Le prix d'achat réel en Euro, déduit du solde site, puis appliqué au ratio CC
+      const realAchatEuro = Math.max(0, prixAchat - soldeSite) * source.ratio;
+      
+      let itAchatDA = realAchatEuro * rateEur; 
+      const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
+      let itVente = parseFloat(it.priceVente) || 0;
 
-    if (it.status === "Retourné Fournisseur") {
-      if (it.sheinRembourse) itAchatDA = 0;
-      if (it.responsableRetour === "cliente") {
-        const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
-        itVente = fraisAChargeCliente;
-      } else {
-        itVente = 0;
+      if (it.status === "Retourné Fournisseur") {
+        if (it.sheinRembourse) itAchatDA = 0;
+        if (it.responsableRetour === "cliente") {
+          const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
+          itVente = fraisAChargeCliente;
+        } else {
+          itVente = 0;
+        }
       }
-    }
 
-    venteTotal += itVente;
-    costOfGoods += itAchatDA + itLogInt;
+      venteTotal += itVente;
+      costOfGoods += itAchatDA + itLogInt;
 
-    // On sauvegarde "realAchatEuro" pour l'afficher dans les statistiques
-    return { ...it, itAchatDA, itLogInt, realAchatEuro, itBenefit: itVente - (itAchatDA + itLogInt) };
-  }) || [];
+      return { ...it, itAchatDA, itLogInt, realAchatEuro, itBenefit: itVente - (itAchatDA + itLogInt) };
+    }) || [];
 
-  return { venteTotal, benefit: venteTotal - costOfGoods, processed };
-};
-
+    return { venteTotal, benefit: venteTotal - costOfGoods, processed };
+  };
   const getCalculatedWeightForArrivage = (arrivageId) => {
     let totalG = 0;
     orders.forEach((o) => {
@@ -2750,10 +2776,16 @@ const OrderModal = ({
                         <input type="number" placeholder="g" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.weightG}
                           onChange={(e) => { const val = e.target.value; setOrderItems(orderItems.map((oi) => { if (oi.id === item.id) { let newStatus = oi.status; if (parseFloat(val) > 0 && (!oi.status || oi.status === "En attente" || oi.status === "A commander")) { newStatus = "Reçu"; } else if ((!val || parseFloat(val) === 0) && oi.status === "Reçu") { newStatus = "En attente"; } return { ...oi, weightG: val, status: newStatus }; } return oi; })); }} />
                       </div>
-                      <div className="col-span-1 flex items-center gap-1 bg-white px-2 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-24">
-                        <span className="text-[9px] font-bold text-gray-400 hidden lg:inline">Achat(€)</span>
-                        <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center md:text-right bg-transparent" value={item.priceAchatEuro} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
-                      </div>
+                      <div className="col-span-1 flex items-center gap-1 bg-white px-1 py-2 md:py-1.5 rounded-lg shadow-sm border border-gray-100 md:w-32">
+    <div className="flex flex-col w-1/2 border-r border-gray-100 pr-1">
+      <span className="text-[7px] uppercase font-bold text-gray-400 text-center">Prix(€)</span>
+      <input type="number" step="0.01" placeholder="€" className="w-full outline-none text-xs font-bold text-center bg-transparent" value={item.priceAchatEuro || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, priceAchatEuro: e.target.value } : oi))} />
+    </div>
+    <div className="flex flex-col w-1/2 pl-1">
+      <span className="text-[7px] uppercase font-bold text-orange-400 text-center">Solde(€)</span>
+      <input type="number" step="0.01" placeholder="-" className="w-full outline-none text-xs font-bold text-center text-orange-400 bg-transparent" value={item.soldeSiteEur || ""} onChange={(e) => setOrderItems(orderItems.map((oi) => oi.id === item.id ? { ...oi, soldeSiteEur: e.target.value } : oi))} />
+    </div>
+  </div>
                       <select
   className="col-span-1 md:w-32 p-2 md:p-1.5 rounded-lg bg-[#FAF7F2] border border-[#E8D5C4]/50 outline-none text-[9px] font-bold text-[#8D7B68] shadow-sm cursor-pointer"
   value={item.purchaseSource || "CB"}
@@ -3186,15 +3218,20 @@ const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
                     <tr key={idx} className="hover:bg-[#FAF7F2]/30">
                       <td className="p-4 font-medium text-[#4A3F35] max-w-[150px] truncate">{item.name || "Article"}</td>
                       <td className="p-4 text-right">
-  <div className={item.purchaseSource && item.purchaseSource !== "CB" ? "line-through text-gray-400 text-[10px]" : ""}>
-    {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
-  </div>
-  {item.purchaseSource && item.purchaseSource !== "CB" && (
-    <div className="text-xs font-black text-green-500 mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
-      {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
-    </div>
-  )}
-</td>
+                        <div className={item.purchaseSource && item.purchaseSource !== "CB" ? "line-through text-gray-400 text-[10px]" : ""}>
+                          {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
+                        </div>
+                        {(parseFloat(item.soldeSiteEur) > 0) && (
+                          <div className="text-[9px] font-bold text-orange-400 mt-0.5" title="Solde Site utilisé">
+                            - {parseFloat(item.soldeSiteEur || 0).toFixed(2)} € (Solde)
+                          </div>
+                        )}
+                        {item.purchaseSource && item.purchaseSource !== "CB" && (
+                          <div className="text-xs font-black text-green-500 mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
+                            {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4 text-right text-gray-500">{formatDA(item.itAchatDA)}</td>
                       <td className="p-4 text-right text-orange-400 font-medium">+{formatDA(item.itLogInt)}</td>
                       <td className="p-4 text-right font-black text-[#8D7B68] bg-[#FAF7F2]/30">{formatDA(cout)}</td>
