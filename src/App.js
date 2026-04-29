@@ -924,8 +924,7 @@ const StationPrixAchat = ({ orders, showToast }) => {
   );
 };
 // --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-// --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-const AchatsTab = ({ orders, onEditOrder }) => {
+const AchatsTab = ({ orders, onEditAchatSite }) => {
   const achatsGroupes = React.useMemo(() => {
     const groups = {};
     orders.forEach(o => {
@@ -943,7 +942,7 @@ const AchatsTab = ({ orders, onEditOrder }) => {
               totalSolde: 0
             };
           }
-          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderObj: o });
+          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderId: o.id });
           
           const prixEu = parseFloat(it.priceAchatEuro) || 0;
           const soldeEu = parseFloat(it.soldeSiteEur) || 0;
@@ -957,7 +956,6 @@ const AchatsTab = ({ orders, onEditOrder }) => {
         }
       });
     });
-    
     return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [orders]);
 
@@ -967,7 +965,7 @@ const AchatsTab = ({ orders, onEditOrder }) => {
          <div className="p-3 bg-white rounded-full shadow-sm"><ShoppingCart size={20} className="text-[#8D7B68]" /></div>
          <div>
            <h3 className="font-serif font-bold text-[#8D7B68] text-lg tracking-widest uppercase">Achats Sites</h3>
-           <p className="text-[10px] font-bold text-[#B8A99A]">Suis tes commandes passées sur les sites et tes dépenses réelles avec les cartes cadeaux et soldes.</p>
+           <p className="text-[10px] font-bold text-[#B8A99A]">Suis tes commandes passées sur les sites et modifie les lots globaux (Cartes, Soldes).</p>
          </div>
       </div>
 
@@ -975,7 +973,6 @@ const AchatsTab = ({ orders, onEditOrder }) => {
         <div className="flex flex-col items-center justify-center py-20 opacity-50">
           <ShoppingCart size={48} className="text-[#D4B996] mb-4" />
           <p className="text-sm font-bold text-[#8D7B68]">Aucun achat sur site enregistré.</p>
-          <p className="text-[10px] font-bold text-gray-400 mt-2">Assigne une date de commande à tes articles pour créer des lots.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -991,27 +988,27 @@ const AchatsTab = ({ orders, onEditOrder }) => {
                       Lot / Identifiant : {groupe.lot}
                     </span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
-                    <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
+                  <div className="text-right flex flex-col items-end gap-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
+                      <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
+                    </div>
+                    {/* LE FAMEUX BOUTON DE MODIFICATION DU LOT */}
+                    <button 
+                      onClick={() => onEditAchatSite(groupe)}
+                      className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 hover:bg-[#E8D5C4] transition-colors shadow-sm"
+                    >
+                      <Edit3 size={12} /> Modifier Lot
+                    </button>
                   </div>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto max-h-32 custom-scrollbar space-y-2 mb-4 pr-1">
                   {groupe.items.map((it, i) => (
-                    <div key={i} className="flex justify-between items-center text-[10px] font-medium text-gray-600 bg-gray-50/50 p-2 rounded-lg border border-gray-100 group">
+                    <div key={i} className="flex justify-between items-center text-[10px] font-medium text-gray-600 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
                       <span className="truncate flex-1 flex items-center gap-1">
                         <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> 
                         <span className="truncate">{it.name || "Article sans nom"}</span>
-                        
-                        {/* 👇 LE BOUTON STYLO EST ICI 👇 */}
-                        <button 
-                          onClick={() => onEditOrder(it.orderObj)} 
-                          className="ml-2 text-[#D4B996] opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-white hover:bg-[#FAF7F2] border border-[#E8D5C4]/50 rounded-md shadow-sm"
-                          title="Modifier cet article dans la commande"
-                        >
-                          <Edit3 size={12} />
-                        </button>
                       </span>
                       <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-2">
                         {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
@@ -1046,6 +1043,90 @@ const AchatsTab = ({ orders, onEditOrder }) => {
           })}
         </div>
       )}
+    </div>
+  );
+};
+// --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
+const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
+  const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || 0);
+  const [sourceSaisie, setSourceSaisie] = useState(groupe.items[0]?.purchaseSource || "CB");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const updatesByOrder = {};
+      const globalSolde = parseFloat(soldeSaisi) || 0;
+      const totalAchatEuro = groupe.items.reduce((sum, it) => sum + (parseFloat(it.priceAchatEuro) || 0), 0);
+
+      // Répartition automatique du solde sur chaque article du lot
+      groupe.items.forEach(it => {
+        if (!updatesByOrder[it.orderId]) {
+          const order = orders.find(o => o.id === it.orderId);
+          if (order) updatesByOrder[it.orderId] = { ...order };
+        }
+        
+        if (updatesByOrder[it.orderId]) {
+          updatesByOrder[it.orderId].items = updatesByOrder[it.orderId].items.map(orderItem => {
+            if (orderItem.id === it.id) {
+              let partSolde = 0;
+              if (totalAchatEuro > 0 && globalSolde > 0) {
+                partSolde = (parseFloat(orderItem.priceAchatEuro) / totalAchatEuro) * globalSolde;
+              }
+              return { ...orderItem, soldeSiteEur: partSolde, purchaseSource: sourceSaisie };
+            }
+            return orderItem;
+          });
+        }
+      });
+
+      // Sauvegarde dans Firebase
+      for (const orderId in updatesByOrder) {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
+      }
+
+      showToast("Commande Site mise à jour ! ✨");
+      onClose();
+    } catch (error) {
+      showToast("Erreur lors de la mise à jour", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+      <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
+        <ModalHeader title="Modifier Achat Site" onClose={onClose} />
+        <div className="p-6 space-y-6">
+          <div className="bg-white p-4 rounded-xl border border-[#E8D5C4]/40 text-center shadow-sm">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lot : {groupe.lot}</p>
+            <h4 className="font-serif text-xl font-bold text-[#8D7B68]">{groupe.date}</h4>
+            <p className="text-sm font-black text-[#4A3F35] mt-2">{groupe.items.length} articles • Total : {groupe.totalAffiche.toFixed(2)} €</p>
+          </div>
+
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-orange-400 ml-1">Solde Site Global Utilisé (€)</label>
+              <input type="number" step="0.01" value={soldeSaisi} onChange={(e) => setSoldeSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-lg font-black text-orange-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-orange-300" placeholder="0.00" />
+              <p className="text-[9px] text-[#B8A99A] font-bold ml-1 italic">Ce solde sera réparti automatiquement sur les {groupe.items.length} articles.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Carte de paiement / Remise</label>
+              <select value={sourceSaisie} onChange={(e) => setSourceSaisie(e.target.value)} className="w-full p-4 rounded-xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-sm cursor-pointer hover:bg-[#FAF7F2] transition-colors">
+                {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
+              </select>
+            </div>
+
+            <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-[#8D7B68] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-50 hover:scale-105 transition-transform">
+              {isSaving ? "Mise à jour..." : "Enregistrer"}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1109,6 +1190,7 @@ const MainApp = ({ user }) => {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingArrivage, setEditingArrivage] = useState(null);
+  const [editingAchatSite, setEditingAchatSite] = useState(null);
 
   const [orderItems, setOrderItems] = useState([]);
   const [orderPayments, setOrderPayments] = useState([]);
@@ -2506,7 +2588,8 @@ const MainApp = ({ user }) => {
           </div>
         )}
           {/* NOUVEL ONGLET : ACHATS SITES */}
-        {activeTab === "achats" && <AchatsTab orders={orders} onEditOrder={openOrderForEdit} />}
+{activeTab === "achats" && <AchatsTab orders={orders} onEditAchatSite={setEditingAchatSite} />}
+{editingAchatSite && <EditAchatSiteModal groupe={editingAchatSite} orders={orders} onClose={() => setEditingAchatSite(null)} showToast={showToast} />}
       </main>
 
       {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
@@ -2887,25 +2970,7 @@ const OrderModal = ({
                 className="w-full py-3 mt-2 border-2 border-dashed border-[#E8D5C4] text-[#8D7B68] font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#FAF7F2] transition-colors flex justify-center items-center gap-2"
               >
                 <Plus size={16} /> Ajouter un article
-              </button>
-
-              <div className="mt-4 flex justify-between items-center gap-2 p-4 bg-orange-50/50 rounded-xl border border-orange-100 shadow-sm">
-                <div>
-                  <span className="block text-[10px] font-black text-orange-500 uppercase tracking-widest">Solde Portefeuille Site (€)</span>
-                  <span className="block text-[9px] font-bold text-orange-400/80 mt-0.5">S'appliquera à toute la commande</span>
-                </div>
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-orange-200 shadow-sm w-32 md:w-40">
-                  <input 
-                    type="number" 
-                    step="0.01" 
-                    value={soldeSiteGlobalEur} 
-                    onChange={e => setSoldeSiteGlobalEur(e.target.value)} 
-                    placeholder="Ex: 5.50" 
-                    className="w-full text-right outline-none text-sm font-black text-orange-500"
-                  />
-                  <span className="text-xs font-bold text-orange-400">€</span>
-                </div>
-              </div>
+              </button>           
             </div>
 
             {/* PAIEMENTS & RÉSUMÉ */}
