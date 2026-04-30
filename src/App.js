@@ -1410,6 +1410,22 @@ const MainApp = ({ user }) => {
     return totalBenefit;
   };
 
+  // 👇 COLLES CE NOUVEAU BLOC JUSTE ICI 👇
+  const getCalculatedWeightForArrivage = (arrivageId) => {
+    let totalWeightG = 0;
+    orders.forEach((o) => {
+      if (o.status === "Annulée") return; 
+      
+      (o.items || []).forEach((item) => {
+        if (item.arrivageId === arrivageId && item.status !== "Retourné Fournisseur") {
+          totalWeightG += (parseFloat(item.weightG) || 0);
+        }
+      });
+    });
+    return totalWeightG / 1000;
+  };
+  // 👆 FIN DU NOUVEAU BLOC 👆
+
   const lateDeliveries = useMemo(() => {
     const now = new Date();
     return orders.filter((o) => {
