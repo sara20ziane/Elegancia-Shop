@@ -2541,7 +2541,7 @@ const MainApp = ({ user }) => {
             {filteredArrivages.map((arr) => {
               const arrStats = getArrivageStats(arr.id);
               const calculatedWeight = getCalculatedWeightForArrivage(arr.id);
-              const calculatedBenefit = getCalculatedBenefitForArrivage(arr.id); // <-- NOUVEAU CALCUL
+              const calculatedBenefit = getCalculatedBenefitForArrivage(arr.id);
 
               return (
                 <div key={arr.id} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 shadow-sm border border-[#E8D5C4]/30">
@@ -2556,7 +2556,6 @@ const MainApp = ({ user }) => {
                     </div>
                   </div>
                   
-                  {/* ON A AJOUTÉ FLEX-WRAP POUR QUE ÇA S'ADAPTE BIEN SUR TÉLÉPHONE */}
                   <div className="flex flex-wrap w-full md:w-auto justify-between md:justify-end items-center gap-2 md:gap-6 pt-3 md:pt-0 border-t md:border-none border-gray-100">
                     <div className="text-left md:text-right flex-1 md:flex-none min-w-[120px]">
                       <p className="text-[8px] text-gray-400 uppercase font-bold mb-1">Poids (Facturé | Articles)</p>
@@ -2572,7 +2571,6 @@ const MainApp = ({ user }) => {
                       <div className="font-bold text-[#8D7B68] text-xs md:text-sm bg-[#FAF7F2] px-2 md:px-3 py-1 rounded-lg border border-[#E8D5C4]/30 text-center md:text-right">{parseFloat(arrStats.rate).toFixed(2)} DA/Kg</div>
                     </div>
 
-                    {/* ---> NOUVEAU BLOC BÉNÉFICE <--- */}
                     <div className="text-left md:text-right flex-1 md:flex-none">
                       <p className="text-[8px] text-green-500 uppercase font-bold mb-1">Bénéfice Net</p>
                       <div className="font-bold text-green-600 text-xs md:text-sm bg-green-50 px-2 md:px-3 py-1 rounded-lg border border-green-100 text-center md:text-right">
