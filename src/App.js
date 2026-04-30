@@ -1393,14 +1393,21 @@ const MainApp = ({ user }) => {
 
     return { venteTotal, benefit: venteTotal - costOfGoods, processed };
   };
-  const getCalculatedWeightForArrivage = (arrivageId) => {
-    let totalG = 0;
+  const getCalculatedBenefitForArrivage = (arrivageId) => {
+    let totalBenefit = 0;
     orders.forEach((o) => {
-      (o.items || []).forEach((item) => {
-        if (item.arrivageId === arrivageId) totalG += parseFloat(item.weightG) || 0;
-      });
+      if (o.status === "Annulée") return; // On ignore les commandes annulées
+      
+      // On filtre uniquement les articles liés à cet arrivage
+      const itemsInArrivage = (o.items || []).filter(item => item.arrivageId === arrivageId);
+      
+      if (itemsInArrivage.length > 0) {
+        // On utilise ta fonction calculateTotals pour avoir la vraie marge nette
+        const t = calculateTotals(itemsInArrivage, 0, o.date);
+        totalBenefit += t.benefit;
+      }
     });
-    return totalG / 1000;
+    return totalBenefit;
   };
 
   const lateDeliveries = useMemo(() => {
@@ -2534,6 +2541,8 @@ const MainApp = ({ user }) => {
             {filteredArrivages.map((arr) => {
               const arrStats = getArrivageStats(arr.id);
               const calculatedWeight = getCalculatedWeightForArrivage(arr.id);
+              const calculatedBenefit = getCalculatedBenefitForArrivage(arr.id); // <-- NOUVEAU CALCUL
+
               return (
                 <div key={arr.id} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4 shadow-sm border border-[#E8D5C4]/30">
                   <div className="flex justify-between w-full md:w-auto items-center">
@@ -2546,8 +2555,10 @@ const MainApp = ({ user }) => {
                       <button onClick={() => setDeleteTarget({ id: arr.id, collection: "arrivages", label: `Arrivage #${arr.number}` })} className="text-red-300 p-2 bg-red-50 rounded-lg"><Trash2 size={14} /></button>
                     </div>
                   </div>
-                  <div className="flex w-full md:w-auto justify-between md:justify-end items-center gap-2 md:gap-8 pt-3 md:pt-0 border-t md:border-none border-gray-100">
-                    <div className="text-left md:text-right flex-1 md:flex-none">
+                  
+                  {/* ON A AJOUTÉ FLEX-WRAP POUR QUE ÇA S'ADAPTE BIEN SUR TÉLÉPHONE */}
+                  <div className="flex flex-wrap w-full md:w-auto justify-between md:justify-end items-center gap-2 md:gap-6 pt-3 md:pt-0 border-t md:border-none border-gray-100">
+                    <div className="text-left md:text-right flex-1 md:flex-none min-w-[120px]">
                       <p className="text-[8px] text-gray-400 uppercase font-bold mb-1">Poids (Facturé | Articles)</p>
                       <div className="font-bold text-[#4A3F35] text-xs md:text-sm bg-gray-50 px-2 md:px-3 py-1 rounded-lg border border-gray-100 text-center flex items-center justify-center md:justify-end gap-2">
                         <span>{parseFloat(arr.totalWeightKg || 0).toFixed(2)} kg</span>
@@ -2555,10 +2566,20 @@ const MainApp = ({ user }) => {
                         <span className="text-[#8D7B68]">{calculatedWeight.toFixed(2)} kg</span>
                       </div>
                     </div>
+                    
                     <div className="text-left md:text-right flex-1 md:flex-none">
                       <p className="text-[8px] text-[#D4B996] uppercase font-bold mb-1">Coût Kilo</p>
                       <div className="font-bold text-[#8D7B68] text-xs md:text-sm bg-[#FAF7F2] px-2 md:px-3 py-1 rounded-lg border border-[#E8D5C4]/30 text-center md:text-right">{parseFloat(arrStats.rate).toFixed(2)} DA/Kg</div>
                     </div>
+
+                    {/* ---> NOUVEAU BLOC BÉNÉFICE <--- */}
+                    <div className="text-left md:text-right flex-1 md:flex-none">
+                      <p className="text-[8px] text-green-500 uppercase font-bold mb-1">Bénéfice Net</p>
+                      <div className="font-bold text-green-600 text-xs md:text-sm bg-green-50 px-2 md:px-3 py-1 rounded-lg border border-green-100 text-center md:text-right">
+                        {formatDA(calculatedBenefit)}
+                      </div>
+                    </div>
+
                     <div className="hidden md:flex gap-2">
                       <button onClick={() => { setEditingArrivage(arr); setArrivageNumber(arr.number); setArrivageDate(arr.date || new Date().toISOString().split("T")[0]); setShowAddArrivage(true); }} className="text-[#D4B996] p-2 hover:scale-110 transition-transform"><Edit3 size={18} /></button>
                       <button onClick={() => setDeleteTarget({ id: arr.id, collection: "arrivages", label: `Arrivage #${arr.number}` })} className="text-red-200 hover:text-red-400 hover:scale-110 transition-transform"><Trash2 size={18} /></button>
