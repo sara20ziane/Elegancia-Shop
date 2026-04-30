@@ -924,7 +924,7 @@ const StationPrixAchat = ({ orders, showToast }) => {
   );
 };
 // --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-const AchatsTab = ({ orders, onEditAchatSite }) => {
+const AchatsTab = ({ orders }) => {
   const achatsGroupes = React.useMemo(() => {
     const groups = {};
     orders.forEach(o => {
@@ -939,30 +939,46 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
               lot: it.supplierLot || "Unique",
               items: [],
               totalAffiche: 0,
-              totalSolde: parseFloat(it.lotGlobalSolde) || 0, // Pris une seule fois pour tout le lot
-              purchaseSource: it.purchaseSource || "CB"
+              totalSolde: 0 // Calculé via it.soldeSiteEur
             };
           }
           
           groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderId: o.id });
           groups[key].totalAffiche += parseFloat(it.priceAchatEuro) || 0;
-          
-          // Sécurité : au cas où le solde a été mis à jour dans un article
-          if (parseFloat(it.lotGlobalSolde) > 0) {
-             groups[key].totalSolde = parseFloat(it.lotGlobalSolde);
-          }
+          groups[key].totalSolde += parseFloat(it.soldeSiteEur) || 0;
         }
       });
     });
     
-    // Calcul de la VRAIE rentabilité du lot
+    // Calcul de la VRAIE rentabilité du lot (Item par item)
     const result = Object.values(groups).map(g => {
-      const ratio = PURCHASE_SOURCES[g.purchaseSource]?.ratio || 1;
-      const resteAPayerCC = Math.max(0, g.totalAffiche - g.totalSolde);
+      let coutReelCB = 0;
+      let coutReelCC = 0;
+      let economieCC = 0;
+
+      g.items.forEach(it => {
+        const source = it.purchaseSource || "CB";
+        const ratio = PURCHASE_SOURCES[source]?.ratio || 1;
+        const prix = parseFloat(it.priceAchatEuro) || 0;
+        const solde = parseFloat(it.soldeSiteEur) || 0;
+        
+        const resteAPayer = Math.max(0, prix - solde);
+        const coutReelItem = resteAPayer * ratio;
+        
+        if (source === "CB") {
+          coutReelCB += coutReelItem;
+        } else {
+          coutReelCC += coutReelItem;
+        }
+        
+        economieCC += (resteAPayer - coutReelItem);
+      });
       
-      g.coutReelCC = resteAPayerCC * ratio;
-      g.totalReel = g.coutReelCC + g.totalSolde; // Le coût global de tes achats
-      g.economieCC = resteAPayerCC - g.coutReelCC; // Ton unique vraie économie
+      g.coutReelCB = coutReelCB;
+      g.coutReelCC = coutReelCC;
+      g.totalPaye = coutReelCB + coutReelCC;
+      g.economieCC = economieCC;
+      
       return g;
     });
     
@@ -1002,12 +1018,6 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
                       <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
                       <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
                     </div>
-                    <button 
-                      onClick={() => onEditAchatSite(groupe)}
-                      className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 hover:bg-[#E8D5C4] transition-colors shadow-sm"
-                    >
-                      <Edit3 size={12} /> Modifier Lot
-                    </button>
                   </div>
                 </div>
                 
@@ -1017,33 +1027,48 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
                       <span className="truncate flex-1">
                         <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> {it.name || "Article"}
                       </span>
-                      <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-2">
-                        {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase ${it.purchaseSource === "CB" ? "bg-blue-50 text-blue-500" : "bg-[#FAF7F2] text-[#8D7B68]"}`}>
+                           {PURCHASE_SOURCES[it.purchaseSource]?.label.split(' ')[0] || it.purchaseSource}
+                        </span>
+                        <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-1">
+                          {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 <div className="mt-auto bg-[#FAF7F2]/50 p-4 rounded-xl border border-[#E8D5C4]/40">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">Panier Affiché (Site)</span>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Panier Affiché (Site)</span>
                     <span className="text-xs font-bold text-gray-400">{groupe.totalAffiche.toFixed(2)} €</span>
                   </div>
                   
                   {groupe.totalSolde > 0 && (
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-orange-500 uppercase">Payé par Solde Portefeuille</span>
+                      <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">Solde Portefeuille Site</span>
                       <span className="text-xs font-bold text-orange-500">- {groupe.totalSolde.toFixed(2)} €</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center mb-3 pt-2 border-t border-[#E8D5C4]/30">
-                    <span className="text-[10px] font-bold text-[#8D7B68] uppercase">Payé par {PURCHASE_SOURCES[groupe.purchaseSource]?.label.split(' ')[0] || 'Carte'} {groupe.purchaseSource}</span>
-                    <div className="text-right">
-                        {(groupe.totalSolde > 0 && groupe.economieCC > 0) && (
-                          <span className="text-[10px] text-gray-400 line-through mr-2">{(groupe.totalAffiche - groupe.totalSolde).toFixed(2)} €</span>
-                        )}
-                        <span className="text-xl font-black text-[#8D7B68]">{groupe.coutReelCC.toFixed(2)} €</span>
+                  <div className="flex flex-col gap-2 mb-3 pt-3 border-t border-[#E8D5C4]/30">
+                    {groupe.coutReelCB > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Part Payée CB</span>
+                        <span className="text-sm font-black text-blue-500">{groupe.coutReelCB.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    {groupe.coutReelCC > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-[#8D7B68] uppercase tracking-widest">Part Payée Carte Cadeau</span>
+                        <span className="text-sm font-black text-[#8D7B68]">{groupe.coutReelCC.toFixed(2)} €</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#E8D5C4]/30">
+                      <span className="text-xs font-black text-[#4A3F35] uppercase tracking-widest">Total Payé (CB + CC)</span>
+                      <span className="text-xl font-black text-[#4A3F35]">{groupe.totalPaye.toFixed(2)} €</span>
                     </div>
                   </div>
                   
@@ -1058,83 +1083,6 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
           })}
         </div>
       )}
-    </div>
-  );
-};
-// --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
-const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
-  const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || "");
-  const [sourceSaisie, setSourceSaisie] = useState(groupe.purchaseSource || "CB");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      const updatesByOrder = {};
-      const globalSolde = parseFloat(soldeSaisi) || 0;
-
-      groupe.items.forEach(it => {
-        if (!updatesByOrder[it.orderId]) {
-          const order = orders.find(o => o.id === it.orderId);
-          if (order) updatesByOrder[it.orderId] = { ...order };
-        }
-        
-        if (updatesByOrder[it.orderId]) {
-          updatesByOrder[it.orderId].items = updatesByOrder[it.orderId].items.map(orderItem => {
-            if (orderItem.id === it.id) {
-              // On mémorise juste l'info du lot, SANS toucher au prix de l'article !
-              return { ...orderItem, lotGlobalSolde: globalSolde, purchaseSource: sourceSaisie };
-            }
-            return orderItem;
-          });
-        }
-      });
-
-      for (const orderId in updatesByOrder) {
-        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
-        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
-      }
-
-      showToast("Lot mis à jour ! ✨");
-      onClose();
-    } catch (error) {
-      showToast("Erreur lors de la mise à jour", "error");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
-      <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
-        <ModalHeader title="Modifier Achat Site" onClose={onClose} />
-        <div className="p-6 space-y-6">
-          <div className="bg-white p-4 rounded-xl border border-[#E8D5C4]/40 text-center shadow-sm">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lot : {groupe.lot}</p>
-            <h4 className="font-serif text-xl font-bold text-[#8D7B68]">{groupe.date}</h4>
-            <p className="text-sm font-black text-[#4A3F35] mt-2">{groupe.items.length} articles • Panier : {groupe.totalAffiche.toFixed(2)} €</p>
-          </div>
-
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[9px] uppercase font-bold text-orange-400 ml-1">Payé via Solde Portefeuille (€)</label>
-              <input type="number" step="0.01" value={soldeSaisi} onChange={(e) => setSoldeSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-lg font-black text-orange-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-orange-300" placeholder="0.00" />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Carte de paiement (Pour le reste)</label>
-              <select value={sourceSaisie} onChange={(e) => setSourceSaisie(e.target.value)} className="w-full p-4 rounded-xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-sm cursor-pointer hover:bg-[#FAF7F2] transition-colors">
-                {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
-              </select>
-            </div>
-
-            <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-[#8D7B68] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-50 hover:scale-105 transition-transform">
-              {isSaving ? "Mise à jour..." : "Enregistrer"}
-            </button>
-          </form>
-        </div>
-      </div>
     </div>
   );
 };
@@ -1198,8 +1146,7 @@ const MainApp = ({ user }) => {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingArrivage, setEditingArrivage] = useState(null);
-  const [editingAchatSite, setEditingAchatSite] = useState(null);
-
+  
   const [orderItems, setOrderItems] = useState([]);
   const [orderPayments, setOrderPayments] = useState([]);
   const [shippingNational, setShippingNational] = useState(0);
@@ -2596,8 +2543,7 @@ const MainApp = ({ user }) => {
           </div>
         )}
           {/* NOUVEL ONGLET : ACHATS SITES */}
-{activeTab === "achats" && <AchatsTab orders={orders} onEditAchatSite={setEditingAchatSite} />}
-{editingAchatSite && <EditAchatSiteModal groupe={editingAchatSite} orders={orders} onClose={() => setEditingAchatSite(null)} showToast={showToast} />}
+{activeTab === "achats" && <AchatsTab orders={orders} />}
       </main>
 
       {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
