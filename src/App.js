@@ -924,7 +924,7 @@ const StationPrixAchat = ({ orders, showToast }) => {
   );
 };
 // --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-const AchatsTab = ({ orders }) => {
+const AchatsTab = ({ orders, onEditAchatSite }) => {
   const achatsGroupes = React.useMemo(() => {
     const groups = {};
     orders.forEach(o => {
@@ -1018,6 +1018,12 @@ const AchatsTab = ({ orders }) => {
                       <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
                       <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
                     </div>
+                    <button 
+                      onClick={() => onEditAchatSite(groupe)}
+                      className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 hover:bg-[#E8D5C4] transition-colors shadow-sm"
+                    >
+                      <Edit3 size={12} /> Modifier Lot
+                    </button>
                   </div>
                 </div>
                 
@@ -1083,6 +1089,92 @@ const AchatsTab = ({ orders }) => {
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+// --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
+const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
+  const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || "");
+  const [sourceSaisie, setSourceSaisie] = useState(groupe.items[0]?.purchaseSource || "CB");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      const updatesByOrder = {};
+      const globalSolde = parseFloat(soldeSaisi) || 0;
+      
+      // On calcule le total du lot pour répartir le solde équitablement
+      const totalAchatEuro = groupe.items.reduce((sum, it) => sum + (parseFloat(it.priceAchatEuro) || 0), 0);
+
+      groupe.items.forEach(it => {
+        if (!updatesByOrder[it.orderId]) {
+          const order = orders.find(o => o.id === it.orderId);
+          if (order) updatesByOrder[it.orderId] = { ...order };
+        }
+        
+        if (updatesByOrder[it.orderId]) {
+          let partSolde = 0;
+          if (totalAchatEuro > 0 && globalSolde > 0) {
+            partSolde = ((parseFloat(it.priceAchatEuro) || 0) / totalAchatEuro) * globalSolde;
+          }
+
+          updatesByOrder[it.orderId].items = updatesByOrder[it.orderId].items.map(orderItem => {
+            if (orderItem.id === it.id) {
+              return { ...orderItem, soldeSiteEur: partSolde, purchaseSource: sourceSaisie };
+            }
+            return orderItem;
+          });
+        }
+      });
+
+      // Exécuter les mises à jour
+      for (const orderId in updatesByOrder) {
+        const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
+        await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
+      }
+
+      showToast("Lot mis à jour et calculé ! ✨");
+      onClose();
+    } catch (error) {
+      showToast("Erreur lors de la mise à jour", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
+      <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
+        <ModalHeader title="Modifier Achat Site" onClose={onClose} />
+        <div className="p-6 space-y-6">
+          <div className="bg-white p-4 rounded-xl border border-[#E8D5C4]/40 text-center shadow-sm">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lot : {groupe.lot}</p>
+            <h4 className="font-serif text-xl font-bold text-[#8D7B68]">{groupe.date}</h4>
+            <p className="text-sm font-black text-[#4A3F35] mt-2">{groupe.items.length} articles • Panier : {groupe.totalAffiche.toFixed(2)} €</p>
+          </div>
+
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-orange-400 ml-1">Payé via Solde Portefeuille (€)</label>
+              <input type="number" step="0.01" value={soldeSaisi} onChange={(e) => setSoldeSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-lg font-black text-orange-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-orange-300" placeholder="0.00" />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Carte de paiement (Pour le reste)</label>
+              <select value={sourceSaisie} onChange={(e) => setSourceSaisie(e.target.value)} className="w-full p-4 rounded-xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-sm cursor-pointer hover:bg-[#FAF7F2] transition-colors">
+                {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
+              </select>
+            </div>
+
+            <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-[#8D7B68] text-white rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-50 hover:scale-105 transition-transform">
+              {isSaving ? "Mise à jour..." : "Enregistrer"}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };
@@ -3275,21 +3367,30 @@ const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
                   return (
                     <tr key={idx} className="hover:bg-[#FAF7F2]/30">
                       <td className="p-4 font-medium text-[#4A3F35] max-w-[150px] truncate">{item.name || "Article"}</td>
+                      
+                      {/* C'EST ICI QUE L'AFFICHAGE CHANGE */}
                       <td className="p-4 text-right">
-                        <div className={item.purchaseSource && item.purchaseSource !== "CB" ? "line-through text-gray-400 text-[10px]" : ""}>
-                          {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
-                        </div>
-                        {(parseFloat(item.soldeSiteEur) > 0) && (
-                          <div className="text-[9px] font-bold text-orange-400 mt-0.5" title="Solde Site utilisé">
-                            - {parseFloat(item.soldeSiteEur || 0).toFixed(2)} € (Solde)
+                        {item.purchaseSource && item.purchaseSource !== "CB" ? (
+                          <div className="flex flex-col items-end">
+                            <span className="line-through text-gray-400 text-[10px]">
+                              {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
+                            </span>
+                            <span className="text-xs font-black text-[#8D7B68] mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
+                              {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
+                            </span>
                           </div>
+                        ) : (
+                          <span className="font-bold text-[#4A3F35]">
+                            {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
+                          </span>
                         )}
-                        {item.purchaseSource && item.purchaseSource !== "CB" && (
-                          <div className="text-xs font-black text-green-500 mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
-                            {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
-                          </div>
+                        {(parseFloat(item.soldeSiteEur) > 0) && (
+                           <div className="text-[9px] font-bold text-orange-400 mt-0.5" title="Solde Site utilisé">
+                             - {parseFloat(item.soldeSiteEur || 0).toFixed(2)} € (Solde)
+                           </div>
                         )}
                       </td>
+
                       <td className="p-4 text-right text-gray-500">{formatDA(item.itAchatDA)}</td>
                       <td className="p-4 text-right text-orange-400 font-medium">+{formatDA(item.itLogInt)}</td>
                       <td className="p-4 text-right font-black text-[#8D7B68] bg-[#FAF7F2]/30">{formatDA(cout)}</td>
