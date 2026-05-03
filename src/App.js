@@ -925,28 +925,34 @@ const StationPrixAchat = ({ orders, showToast }) => {
   );
 };
 // --- COMPOSANT : SUIVI DES ACHATS (SITES FOURNISSEURS) ---
-const AchatsTab = ({ orders, onEditAchatSite }) => {
+const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
   const achatsGroupes = React.useMemo(() => {
     const groups = {};
     orders.forEach(o => {
       if (o.status === "Annulée") return;
       (o.items || []).forEach(it => {
         if (it.supplierDate) {
-          const key = `${it.supplierDate}_${it.supplierLot || "Unique"}`;
+          // Filtrage par année et par mois
+          const d = new Date(it.supplierDate);
+          const isSameMonth = d.getFullYear() === filterYear && (filterMonth === 0 || d.getMonth() + 1 === filterMonth);
           
-          if (!groups[key]) {
-            groups[key] = {
-              date: it.supplierDate,
-              lot: it.supplierLot || "Unique",
-              items: [],
-              totalAffiche: 0,
-              totalSolde: 0 // Calculé via it.soldeSiteEur
-            };
+          if (isSameMonth) {
+            const key = `${it.supplierDate}_${it.supplierLot || "Unique"}`;
+            
+            if (!groups[key]) {
+              groups[key] = {
+                date: it.supplierDate,
+                lot: it.supplierLot || "Unique",
+                items: [],
+                totalAffiche: 0,
+                totalSolde: 0 // Calculé via it.soldeSiteEur
+              };
+            }
+            
+            groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderId: o.id });
+            groups[key].totalAffiche += parseFloat(it.priceAchatEuro) || 0;
+            groups[key].totalSolde += parseFloat(it.soldeSiteEur) || 0;
           }
-          
-          groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderId: o.id });
-          groups[key].totalAffiche += parseFloat(it.priceAchatEuro) || 0;
-          groups[key].totalSolde += parseFloat(it.soldeSiteEur) || 0;
         }
       });
     });
@@ -984,7 +990,7 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
     });
     
     return result.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [orders]);
+  }, [orders, filterYear, filterMonth]); // NOUVEAU : Ajout des dépendances de filtrage
 
   return (
     <div className="space-y-4 md:space-y-6 animate-in slide-in-from-bottom-4">
@@ -999,7 +1005,7 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
       {achatsGroupes.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 opacity-50">
           <ShoppingCart size={48} className="text-[#D4B996] mb-4" />
-          <p className="text-sm font-bold text-[#8D7B68]">Aucun achat sur site enregistré.</p>
+          <p className="text-sm font-bold text-[#8D7B68]">Aucun achat sur site enregistré pour ce mois.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1019,12 +1025,14 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
                       <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Articles</span>
                       <h4 className="font-black text-[#4A3F35] text-lg">{groupe.items.length}</h4>
                     </div>
-                    <button 
-                      onClick={() => onEditAchatSite(groupe)}
-                      className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 hover:bg-[#E8D5C4] transition-colors shadow-sm"
-                    >
-                      <Edit3 size={12} /> Modifier Lot
-                    </button>
+                    {onEditAchatSite && (
+                      <button 
+                        onClick={() => onEditAchatSite(groupe)}
+                        className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] rounded-lg text-[9px] font-bold uppercase flex items-center gap-1 hover:bg-[#E8D5C4] transition-colors shadow-sm"
+                      >
+                        <Edit3 size={12} /> Modifier Lot
+                      </button>
+                    )}
                   </div>
                 </div>
                 
@@ -1093,7 +1101,6 @@ const AchatsTab = ({ orders, onEditAchatSite }) => {
     </div>
   );
 };
-
 // --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
 const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
   const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || "");
