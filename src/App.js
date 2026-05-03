@@ -2678,7 +2678,13 @@ const MainApp = ({ user }) => {
           </div>
         )}
           {/* NOUVEL ONGLET : ACHATS SITES */}
-{activeTab === "achats" && <AchatsTab orders={orders} />}
+        {activeTab === "achats" && (
+          <AchatsTab 
+            orders={orders} 
+            filterYear={filterYear} 
+            filterMonth={filterMonth} 
+          />
+        )}
       </main>
 
       {/* MOBILE NAV: MODIFIÉE POUR ÊTRE PLUS AÉRÉE AVEC SCROLL */}
