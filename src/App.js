@@ -1270,6 +1270,7 @@ const MainApp = ({ user }) => {
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editingOrder, setEditingOrder] = useState(null);
   const [editingArrivage, setEditingArrivage] = useState(null);
+  const [editingAchatSite, setEditingAchatSite] = useState(null);
   
   const [orderItems, setOrderItems] = useState([]);
   const [orderPayments, setOrderPayments] = useState([]);
@@ -2708,6 +2709,7 @@ const MainApp = ({ user }) => {
             orders={orders} 
             filterYear={filterYear} 
             filterMonth={filterMonth} 
+            onEditAchatSite={(groupe) => setEditingAchatSite(groupe)} 
           />
         )}
       </main>
@@ -2845,6 +2847,14 @@ const MainApp = ({ user }) => {
       )}
       {showConfig && <ConfigModal config={config} saveConfig={saveConfig} setConfig={setConfig} onClose={() => setShowConfig(false)} />}
       {deleteTarget && <DeleteModal deleteTarget={deleteTarget} performDelete={performDelete} onClose={() => setDeleteTarget(null)} />}
+      {editingAchatSite && (
+        <EditAchatSiteModal 
+          groupe={editingAchatSite} 
+          orders={orders} 
+          showToast={showToast} 
+          onClose={() => setEditingAchatSite(null)} 
+        />
+      )}
     </div>
   );
 };
