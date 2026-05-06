@@ -945,13 +945,15 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
                 lot: it.supplierLot || "Unique",
                 items: [],
                 totalAffiche: 0,
-                totalSolde: 0 // Calculé via it.soldeSiteEur
+                totalSolde: 0,
+                totalShippingSite: 0 // <-- AJOUTE CECI
               };
             }
             
             groups[key].items.push({ ...it, customerName: o.customerName, orderNumber: o.orderNumber, orderId: o.id });
             groups[key].totalAffiche += parseFloat(it.priceAchatEuro) || 0;
             groups[key].totalSolde += parseFloat(it.soldeSiteEur) || 0;
+            groups[key].totalShippingSite += parseFloat(it.shippingSiteEur) || 0; // <-- AJOUTE CECI
           }
         }
       });
@@ -1059,6 +1061,12 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Panier Affiché (Site)</span>
                     <span className="text-xs font-bold text-gray-400">{groupe.totalAffiche.toFixed(2)} €</span>
                   </div>
+{groupe.totalShippingSite > 0 && (
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Frais Livraison Site</span>
+                      <span className="text-xs font-bold text-red-400">+ {groupe.totalShippingSite.toFixed(2)} €</span>
+                    </div>
+                  )}
                   
                   {groupe.totalSolde > 0 && (
                     <div className="flex justify-between items-center mb-1">
@@ -1104,6 +1112,7 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
 // --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
 const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
   const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || "");
+  const [shippingSaisi, setShippingSaisi] = useState(groupe.totalShippingSite || ""); // NOUVEAU
   const [sourceSaisie, setSourceSaisie] = useState(groupe.items[0]?.purchaseSource || "CB");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -1113,8 +1122,8 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
     try {
       const updatesByOrder = {};
       const globalSolde = parseFloat(soldeSaisi) || 0;
+      const globalShipping = parseFloat(shippingSaisi) || 0; // NOUVEAU
       
-      // On calcule le total du lot pour répartir le solde équitablement
       const totalAchatEuro = groupe.items.reduce((sum, it) => sum + (parseFloat(it.priceAchatEuro) || 0), 0);
 
       groupe.items.forEach(it => {
@@ -1125,26 +1134,33 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
         
         if (updatesByOrder[it.orderId]) {
           let partSolde = 0;
-          if (totalAchatEuro > 0 && globalSolde > 0) {
-            partSolde = ((parseFloat(it.priceAchatEuro) || 0) / totalAchatEuro) * globalSolde;
+          let partShipping = 0;
+          
+          if (totalAchatEuro > 0) {
+            if (globalSolde > 0) partSolde = ((parseFloat(it.priceAchatEuro) || 0) / totalAchatEuro) * globalSolde;
+            if (globalShipping > 0) partShipping = ((parseFloat(it.priceAchatEuro) || 0) / totalAchatEuro) * globalShipping;
           }
 
           updatesByOrder[it.orderId].items = updatesByOrder[it.orderId].items.map(orderItem => {
             if (orderItem.id === it.id) {
-              return { ...orderItem, soldeSiteEur: partSolde, purchaseSource: sourceSaisie };
+              return { 
+                ...orderItem, 
+                soldeSiteEur: partSolde, 
+                shippingSiteEur: partShipping, // Sauvegarde de la part de livraison
+                purchaseSource: sourceSaisie 
+              };
             }
             return orderItem;
           });
         }
       });
 
-      // Exécuter les mises à jour
       for (const orderId in updatesByOrder) {
         const orderRef = doc(db, "artifacts", appId, "public", "data", "orders", orderId);
         await updateDoc(orderRef, { items: updatesByOrder[orderId].items });
       }
 
-      showToast("Lot mis à jour et calculé ! ✨");
+      showToast("Lot mis à jour avec les frais et soldes ! ✨");
       onClose();
     } catch (error) {
       showToast("Erreur lors de la mise à jour", "error");
@@ -1156,7 +1172,7 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-end md:items-center justify-center p-0 md:p-4 pb-4">
       <div className="bg-[#FDFBF7] w-full md:max-w-md rounded-t-[2rem] md:rounded-[2rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4">
-        <ModalHeader title="Modifier Achat Site" onClose={onClose} />
+        <ModalHeader title="Ajuster le Lot" onClose={onClose} />
         <div className="p-6 space-y-6">
           <div className="bg-white p-4 rounded-xl border border-[#E8D5C4]/40 text-center shadow-sm">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lot : {groupe.lot}</p>
@@ -1165,13 +1181,21 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[9px] uppercase font-bold text-orange-400 ml-1">Payé via Solde Portefeuille (€)</label>
-              <input type="number" step="0.01" value={soldeSaisi} onChange={(e) => setSoldeSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-lg font-black text-orange-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-orange-300" placeholder="0.00" />
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-orange-400 ml-1">Solde Utilisé (€)</label>
+                <input type="number" step="0.01" value={soldeSaisi} onChange={(e) => setSoldeSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-base md:text-lg font-black text-orange-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-orange-300" placeholder="0.00" />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[9px] uppercase font-bold text-red-400 ml-1">Frais Liv. Site (€)</label>
+                <input type="number" step="0.01" value={shippingSaisi} onChange={(e) => setShippingSaisi(e.target.value)} className="w-full p-4 rounded-xl bg-white text-base md:text-lg font-black text-red-500 outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-red-300" placeholder="0.00" />
+              </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Carte de paiement (Pour le reste)</label>
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Carte de paiement</label>
               <select value={sourceSaisie} onChange={(e) => setSourceSaisie(e.target.value)} className="w-full p-4 rounded-xl bg-white border border-[#E8D5C4]/50 outline-none text-xs font-bold text-[#8D7B68] shadow-sm cursor-pointer hover:bg-[#FAF7F2] transition-colors">
                 {Object.keys(PURCHASE_SOURCES).map(key => <option key={key} value={key}>{PURCHASE_SOURCES[key].label}</option>)}
               </select>
@@ -1375,9 +1399,10 @@ const MainApp = ({ user }) => {
       const source = PURCHASE_SOURCES[it.purchaseSource] || PURCHASE_SOURCES["CB"];
       const prixAchat = parseFloat(it.priceAchatEuro) || 0;
       const soldeSite = parseFloat(it.soldeSiteEur) || 0;
+      const shippingSite = parseFloat(it.shippingSiteEur) || 0; // NOUVEAU : Frais de port du site
       
-      // Le prix d'achat réel en Euro, déduit du solde site, puis appliqué au ratio CC
-      const realAchatEuro = Math.max(0, prixAchat - soldeSite) * source.ratio;
+      // Le prix d'achat réel en Euro : (Prix + Livraison) - Solde
+      const realAchatEuro = Math.max(0, (prixAchat + shippingSite) - soldeSite) * source.ratio;
       
       let itAchatDA = realAchatEuro * rateEur; 
       const itLogInt = ((parseFloat(it.weightG) || 0) / 1000) * stats.rate;
@@ -1396,7 +1421,7 @@ const MainApp = ({ user }) => {
       venteTotal += itVente;
       costOfGoods += itAchatDA + itLogInt;
 
-      return { ...it, itAchatDA, itLogInt, realAchatEuro, itBenefit: itVente - (itAchatDA + itLogInt) };
+      return { ...it, itAchatDA, itLogInt, realAchatEuro, shippingSiteEur: shippingSite, itBenefit: itVente - (itAchatDA + itLogInt) };
     }) || [];
 
     return { venteTotal, benefit: venteTotal - costOfGoods, processed };
