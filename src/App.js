@@ -970,8 +970,10 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
         const ratio = PURCHASE_SOURCES[source]?.ratio || 1;
         const prix = parseFloat(it.priceAchatEuro) || 0;
         const solde = parseFloat(it.soldeSiteEur) || 0;
+        const shipping = parseFloat(it.shippingSiteEur) || 0; // <-- AJOUT ICI
         
-        const resteAPayer = Math.max(0, prix - solde);
+        // On intègre la livraison dans ce qu'il reste à payer
+        const resteAPayer = Math.max(0, (prix + shipping) - solde); 
         const coutReelItem = resteAPayer * ratio;
         
         if (source === "CB") {
