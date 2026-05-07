@@ -1046,13 +1046,25 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
                       <span className="truncate flex-1">
                         <span className="text-[#8D7B68] font-bold">[{it.customerName}]</span> {it.name || "Article"}
                       </span>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase ${it.purchaseSource === "CB" ? "bg-blue-50 text-blue-500" : "bg-[#FAF7F2] text-[#8D7B68]"}`}>
-                           {PURCHASE_SOURCES[it.purchaseSource]?.label.split(' ')[0] || it.purchaseSource}
-                        </span>
-                        <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-1">
-                          {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
-                        </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black uppercase ${it.purchaseSource === "CB" ? "bg-blue-50 text-blue-500" : "bg-[#FAF7F2] text-[#8D7B68]"}`}>
+                             {PURCHASE_SOURCES[it.purchaseSource]?.label.split(' ')[0] || it.purchaseSource}
+                          </span>
+                          <span className="font-bold whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm ml-1">
+                            {parseFloat(it.priceAchatEuro || 0).toFixed(2)} €
+                          </span>
+                        </div>
+                        {parseFloat(it.shippingSiteEur) > 0 && (
+                          <span className="text-[9px] font-bold text-red-400">
+                            + {parseFloat(it.shippingSiteEur).toFixed(2)} € (Liv)
+                          </span>
+                        )}
+                        {parseFloat(it.soldeSiteEur) > 0 && (
+                          <span className="text-[9px] font-bold text-orange-400">
+                            - {parseFloat(it.soldeSiteEur).toFixed(2)} € (Solde)
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -3417,7 +3429,7 @@ const ConfigModal = ({ config, saveConfig, setConfig, onClose }) => {
 const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
   const { processed } = calculateTotals(order.items || [], order.shippingNational, order.date);
   const totals = processed.reduce((acc, item) => {
-    acc.euro += parseFloat(item.priceAchatEuro) || 0;
+    acc.euro += parseFloat(item.realAchatEuro) || 0; // On affiche le VRAI total payé !
     acc.achatDA += parseFloat(item.itAchatDA) || 0;
     acc.logDA += parseFloat(item.itLogInt) || 0;
     acc.cout += (parseFloat(item.itAchatDA) || 0) + (parseFloat(item.itLogInt) || 0);
@@ -3456,25 +3468,29 @@ const CostBreakdownModal = ({ order, onClose, formatDA, calculateTotals }) => {
                       
                       {/* C'EST ICI QUE L'AFFICHAGE CHANGE */}
                       <td className="p-4 text-right">
-                        {item.purchaseSource && item.purchaseSource !== "CB" ? (
-                          <div className="flex flex-col items-end">
-                            <span className="line-through text-gray-400 text-[10px]">
-                              {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
-                            </span>
-                            <span className="text-xs font-black text-[#8D7B68] mt-0.5" title={`Payé avec ${item.purchaseSource}`}>
-                              {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
-                            </span>
-                          </div>
-                        ) : (
+                        <div className="flex flex-col items-end">
                           <span className="font-bold text-[#4A3F35]">
                             {parseFloat(item.priceAchatEuro || 0).toFixed(2)} €
                           </span>
-                        )}
-                        {(parseFloat(item.soldeSiteEur) > 0) && (
-                           <div className="text-[9px] font-bold text-orange-400 mt-0.5" title="Solde Site utilisé">
-                             - {parseFloat(item.soldeSiteEur || 0).toFixed(2)} € (Solde)
-                           </div>
-                        )}
+                          
+                          {parseFloat(item.shippingSiteEur) > 0 && (
+                            <span className="text-[9px] font-bold text-red-400 mt-0.5" title="Part des frais de port site">
+                              + {parseFloat(item.shippingSiteEur).toFixed(2)} € (Liv)
+                            </span>
+                          )}
+
+                          {parseFloat(item.soldeSiteEur) > 0 && (
+                            <span className="text-[9px] font-bold text-orange-400 mt-0.5" title="Solde Site utilisé">
+                              - {parseFloat(item.soldeSiteEur).toFixed(2)} € (Solde)
+                            </span>
+                          )}
+
+                          {(parseFloat(item.shippingSiteEur) > 0 || parseFloat(item.soldeSiteEur) > 0 || item.purchaseSource !== "CB") && (
+                             <span className="text-xs font-black text-[#8D7B68] mt-1 pt-1 border-t border-gray-100" title={`Coût réel final (€) via ${item.purchaseSource}`}>
+                               = {parseFloat(item.realAchatEuro || 0).toFixed(2)} €
+                             </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="p-4 text-right text-gray-500">{formatDA(item.itAchatDA)}</td>
