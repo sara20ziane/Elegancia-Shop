@@ -1125,8 +1125,9 @@ const AchatsTab = ({ orders, onEditAchatSite, filterYear, filterMonth }) => {
 };
 // --- COMPOSANT : MODIFICATION D'UN LOT (ACHAT SITE) ---
 const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
+  const [lotSaisi, setLotSaisi] = useState(groupe.lot || ""); // NOUVEAU
   const [soldeSaisi, setSoldeSaisi] = useState(groupe.totalSolde || "");
-  const [shippingSaisi, setShippingSaisi] = useState(groupe.totalShippingSite || ""); // NOUVEAU
+  const [shippingSaisi, setShippingSaisi] = useState(groupe.totalShippingSite || "");
   const [sourceSaisie, setSourceSaisie] = useState(groupe.items[0]?.purchaseSource || "CB");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -1136,7 +1137,7 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
     try {
       const updatesByOrder = {};
       const globalSolde = parseFloat(soldeSaisi) || 0;
-      const globalShipping = parseFloat(shippingSaisi) || 0; // NOUVEAU
+      const globalShipping = parseFloat(shippingSaisi) || 0;
       
       const totalAchatEuro = groupe.items.reduce((sum, it) => sum + (parseFloat(it.priceAchatEuro) || 0), 0);
 
@@ -1160,8 +1161,9 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
               return { 
                 ...orderItem, 
                 soldeSiteEur: partSolde, 
-                shippingSiteEur: partShipping, // Sauvegarde de la part de livraison
-                purchaseSource: sourceSaisie 
+                shippingSiteEur: partShipping,
+                purchaseSource: sourceSaisie,
+                supplierLot: lotSaisi // <-- AJOUTÉ ICI : Le nouveau nom du lot
               };
             }
             return orderItem;
@@ -1195,6 +1197,17 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
+
+            <div className="space-y-1">
+              <label className="text-[9px] uppercase font-bold text-[#B8A99A] ml-1">Identifiant / Nom du Lot</label>
+              <input 
+                type="text" 
+                value={lotSaisi} 
+                onChange={(e) => setLotSaisi(e.target.value)} 
+                className="w-full p-3.5 rounded-xl bg-white text-sm font-bold text-[#8D7B68] outline-none shadow-sm border border-[#E8D5C4]/50 focus:border-[#D4B996]" 
+                placeholder="Ex: Lot Zara Juin" 
+              />
+            </div>
             
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
