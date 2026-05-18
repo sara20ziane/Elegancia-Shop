@@ -1478,7 +1478,9 @@ const MainApp = ({ user }) => {
       if (o.status === "Annulée") return; 
       
       (o.items || []).forEach((item) => {
-        if (item.arrivageId === arrivageId && item.status !== "Retourné Fournisseur") {
+        // CORRECTION : On garde le poids de l'article même s'il est "Retourné Fournisseur"
+        // afin de ne pas fausser le poids réel facturé pour ce carton.
+        if (item.arrivageId === arrivageId) {
           totalWeightG += (parseFloat(item.weightG) || 0);
         }
       });
