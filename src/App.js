@@ -1260,7 +1260,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
   items.forEach((item) => {
     if (item.status === "Retourné Fournisseur" && item.responsableRetour !== "cliente") return;
     const price = parseFloat(item.priceVente) || 0;
-    const desc = `${item.name || "Article"}`;
+    const desc = `${item.name || "Article"} (${item.size || "Unique"} / ${item.color || "Standard"})`;
     tableRows.push({ desc, qty: 1, pu: price, total: price });
     calculatedSubtotal += price;
   });
@@ -1278,42 +1278,82 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
 
   const formattedDate = new Date(invoiceDate).toLocaleDateString("fr-FR");
 
-  // CORRECTION : Fonction d'export Excel natif (sans le "window.")
-  // Fonction d'export Excel natif
+  // NOUVELLE FONCTION EXCEL (Structure identique à la photo)
   const generateExcel = () => {
-    const wsData = [
-      [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", "", `N° de facture : ${order.orderNumber}`],
-      [`${COMPANY_INFO.address}`, "", "", `Date : ${formattedDate}`],
-      [`${COMPANY_INFO.rc}`, "", "", `Nom du client : ${order.customerName}`],
-      [`${COMPANY_INFO.nif}`, "", "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`],
-      [`${COMPANY_INFO.phone}`, "", "", `Téléphone : ${customer?.phone || ""}`],
-      [`${COMPANY_INFO.email}`, "", "", ""],
-      ["", "", "", ""],
-      ["Description", "Quantité", "Prix unitaire", "Total"]
-    ];
+    try {
+      const wsData = [
+        // Ligne 1 : Vide pour aérer
+        [],
+        // Lignes 2 à 7 : Informations de contact bien espacées
+        [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", `N° de facture : ${order.orderNumber}`, ""],
+        [`Adresse : ${COMPANY_INFO.address}`, "", `Date : ${formattedDate}`, ""],
+        [`RC : ${COMPANY_INFO.rc}`, "", `Nom du client : ${order.customerName}`, ""],
+        [`NIF : ${COMPANY_INFO.nif}`, "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`, ""],
+        [`Téléphone : ${COMPANY_INFO.phone}`, "", `Téléphone : ${customer?.phone || ""}`, ""],
+        [`Email : ${COMPANY_INFO.email}`, "", "", ""],
+        // Lignes 8 & 9 : Espace avant le tableau
+        [],
+        [],
+        // Ligne 10 : En-têtes du tableau
+        ["Description", "Quantité", "Prix unitaire", "Total"]
+      ];
 
-    tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
-    wsData.push(["Livraison", 1, shipping, shipping]);
-    wsData.push(["", "", "", ""]);
-    wsData.push(["", "", "Montant TTC", totalTTC]);
-    wsData.push(["", "", "Versement", versement]);
-    wsData.push(["", "", "Reste à payé", reste]);
+      // Ajout dynamique des articles
+      tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
+      
+      // Ajout de la ligne livraison
+      wsData.push(["Livraison", 1, shipping > 0 ? shipping : "-", shipping > 0 ? shipping : "-"]);
+      
+      // Lignes vides pour séparer des totaux (comme sur la photo)
+      wsData.push(["", "", "", ""]);
+      wsData.push(["", "", "", ""]);
+      
+      // Totaux alignés à droite
+      wsData.push(["", "", "Montant TTC", totalTTC]);
+      wsData.push(["", "", "Versement", versement]);
+      wsData.push(["", "", "Reste à payé", Math.max(0, reste)]);
 
-    // On utilise directement XLSX importé tout en haut
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Ajustement des largeurs de colonnes pour que ce soit joli
-    ws['!cols'] = [{ wch: 45 }, { wch: 10 }, { wch: 25 }, { wch: 15 }];
+      // On transforme ce tableau en feuille Excel
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Facture");
-    XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
+      // FUSION DES CELLULES : Permet au texte long de ne pas être coupé !
+      ws['!merges'] = [
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }, // Nom de l'entreprise (A2:B2)
+        { s: { r: 1, c: 2 }, e: { r: 1, c: 3 } }, // N° facture (C2:D2)
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 1 } }, // Adresse (A3:B3)
+        { s: { r: 2, c: 2 }, e: { r: 2, c: 3 } }, // Date (C3:D3)
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 1 } }, // RC (A4:B4)
+        { s: { r: 3, c: 2 }, e: { r: 3, c: 3 } }, // Nom client (C4:D4)
+        { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, // NIF (A5:B5)
+        { s: { r: 4, c: 2 }, e: { r: 4, c: 3 } }, // Adresse client (C5:D5)
+        { s: { r: 5, c: 0 }, e: { r: 5, c: 1 } }, // Tel (A6:B6)
+        { s: { r: 5, c: 2 }, e: { r: 5, c: 3 } }, // Tel client (C6:D6)
+        { s: { r: 6, c: 0 }, e: { r: 6, c: 1 } }, // Email (A7:B7)
+      ];
+
+      // LARGEUR DES COLONNES (Pour que ce soit lisible dès l'ouverture)
+      ws['!cols'] = [
+        { wch: 45 }, // Colonne A (Description très large)
+        { wch: 10 }, // Colonne B (Quantité)
+        { wch: 20 }, // Colonne C (Prix unitaire)
+        { wch: 20 }  // Colonne D (Total)
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Facture");
+      XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
+      
+    } catch (error) {
+      console.error("Erreur lors de la génération Excel :", error);
+      alert("Erreur lors de la création du fichier Excel.");
+    }
   };
+
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
         
-        {/* BARRE D'ACTIONS */}
+        {/* BARRE D'ACTIONS STYLE PREMIUM (Masquée à l'impression) */}
         <div className="absolute top-4 right-4 flex items-center gap-2 z-20 print:hidden">
           <input 
             type="date" 
@@ -1324,7 +1364,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
           <button onClick={generateExcel} className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] border border-[#E8D5C4] text-[10px] font-black uppercase rounded-xl shadow-sm hover:bg-[#E8D5C4] transition-colors">
             Excel
           </button>
-          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm" title="Imprimer ou Sauvegarder en PDF">
+          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm">
             <Printer size={16} />
           </button>
           <button onClick={onClose} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm">
@@ -1332,7 +1372,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
           </button>
         </div>
 
-        {/* CONTENU VISUEL */}
+        {/* CONTENU VISUEL IDENTIQUE À TES AUTRES BONS */}
         <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:overflow-visible print:pb-0 print:h-auto">
           
           <div className="bg-[#FAF7F2] p-8 pt-12 border-b border-[#E8D5C4]/40 text-center relative print:bg-white print:border-b-2 print:border-black print:p-4">
@@ -1343,7 +1383,6 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
 
           <div className="p-8 space-y-6 print:p-4 print:space-y-4">
             
-            {/* Blocs d'informations */}
             <div className="grid grid-cols-2 gap-4 text-xs border-b border-gray-100 pb-4 print:border-black">
               <div className="space-y-1 text-[#4A3F35] print:text-black font-medium">
                 <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold print:text-gray-600">Émetteur</p>
@@ -1365,7 +1404,6 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
               </div>
             </div>
 
-            {/* Tableau */}
             <div>
               <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">Désignation des prestations</h4>
               <div className="border border-[#E8D5C4]/60 rounded-xl overflow-hidden bg-white shadow-sm print:border-black print:rounded-none">
@@ -1388,17 +1426,16 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
                       </tr>
                     ))}
                     <tr className="bg-gray-50/30 font-normal">
-                      <td className="p-3 text-gray-400 italic">Livraison ({customer?.deliveryMode === "stopdesk" ? "Stopdesk" : "Domicile"})</td>
+                      <td className="p-3 text-gray-400 italic">Frais de livraison ({customer?.deliveryMode === "stopdesk" ? "Stopdesk" : "Domicile"})</td>
                       <td className="p-3 text-center text-gray-400">1</td>
-                      <td className="p-3 text-right text-gray-400">{shipping > 0 ? formatDA(shipping) : "-"}</td>
-                      <td className="p-3 text-right text-gray-400 font-bold">{shipping > 0 ? formatDA(shipping) : "-"}</td>
+                      <td className="p-3 text-right text-gray-400">{formatDA(shipping)}</td>
+                      <td className="p-3 text-right text-gray-400 font-bold">{formatDA(shipping)}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* Totaux */}
             <div className="bg-[#FAF7F2]/80 p-5 rounded-2xl border border-[#E8D5C4]/40 space-y-2.5 print:bg-transparent print:border-none print:p-0">
               <div className="flex justify-between text-xs text-gray-500 font-bold">
                 <span>Sous-total articles</span>
@@ -1415,26 +1452,26 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
                 <span>+ {formatDA(shipping)}</span>
               </div>
               <div className="flex justify-between text-xs text-[#8D7B68] font-bold border-t border-[#E8D5C4]/30 pt-2">
-                <span>Montant TTC de la facture</span>
+                <span>Total TTC de la facture</span>
                 <span>{formatDA(totalTTC)}</span>
               </div>
               <div className="flex justify-between text-xs text-gray-400 font-medium">
-                <span>Versement encaissé</span>
+                <span>Acomptes encaissés</span>
                 <span>- {formatDA(versement)}</span>
               </div>
               
               <div className="h-px bg-[#E8D5C4] my-2 opacity-60 print:bg-black print:opacity-100"></div>
               
               <div className="flex justify-between items-center font-serif font-bold text-lg text-[#8D7B68] print:text-black">
-                <span>Reste à payer</span>
+                <span>Solde restant dû</span>
                 <span className={`px-3 py-1 rounded-xl text-base ${reste > 0 ? "bg-red-50 text-red-500 border border-red-100 print:bg-transparent print:text-black print:border-none" : "bg-green-50 text-green-600 border border-green-100 print:bg-transparent print:text-black print:border-none"}`}>
-                  {reste > 0 ? formatDA(reste) : "RÉGLÉ ✓"}
+                  {reste > 0 ? formatDA(reste) : "SOLDE RÉGLÉ ✓"}
                 </span>
               </div>
             </div>
 
             <div className="text-center pt-2 border-t border-[#E8D5C4]/20 print:border-black">
-              <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-black print:text-black">Merci pour votre confiance ✨</p>
+              <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-black print:text-black">Merci pour votre fidélité à Elegancia Shop ✨</p>
             </div>
 
           </div>
