@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -1241,6 +1242,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
   const [invoiceDate, setInvoiceDate] = React.useState(new Date().toISOString().split("T")[0]);
   const customer = customers.find((c) => c.id === order.customerId);
 
+  // Informations immuables de l'entreprise (Elegancia Shop)
   const COMPANY_INFO = {
     name: "Elegancia Shop",
     address: "Adresse Draria",
@@ -1250,6 +1252,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
     email: "Email khaledabrl994@gmail.com",
   };
 
+  // Préparation et traitement des données du tableau
   const items = order.items || [];
   let calculatedSubtotal = 0;
   const tableRows = [];
@@ -1257,7 +1260,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
   items.forEach((item) => {
     if (item.status === "Retourné Fournisseur" && item.responsableRetour !== "cliente") return;
     const price = parseFloat(item.priceVente) || 0;
-    const desc = `${item.name || "Article"} (${item.size || "Unique"} / ${item.color || "Standard"})`;
+    const desc = `${item.name || "Article"}`;
     tableRows.push({ desc, qty: 1, pu: price, total: price });
     calculatedSubtotal += price;
   });
@@ -1275,39 +1278,63 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
 
   const formattedDate = new Date(invoiceDate).toLocaleDateString("fr-FR");
 
+  // CORRECTION : Fonction d'export Excel natif (sans le "window.")
   const generateExcel = () => {
-    if (!window.XLSX) {
-      alert("La bibliothèque Excel n'est pas encore chargée.");
-      return;
+    try {
+      // Structure exacte de la photo Excel (Colonnes A, B, C, D)
+      const wsData = [
+        [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", `N° de facture : ${order.orderNumber}`, ""],
+        [`${COMPANY_INFO.address}`, "", `Date : ${formattedDate}`, ""],
+        [`${COMPANY_INFO.rc}`, "", `Nom du client : ${order.customerName}`, ""],
+        [`${COMPANY_INFO.nif}`, "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`, ""],
+        [`${COMPANY_INFO.phone}`, "", `Téléphone : ${customer?.phone || ""}`, ""],
+        [`${COMPANY_INFO.email}`, "", "", ""],
+        ["", "", "", ""],
+        ["Description", "Quantité", "Prix unitaire", "Total"]
+      ];
+
+      // Ajout des articles
+      tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
+      
+      // Ajout de la livraison
+      wsData.push(["Livraison", 1, shipping > 0 ? shipping : "-", shipping > 0 ? shipping : "-"]);
+      
+      // Espaces vides comme sur ta photo
+      wsData.push(["", "", "", ""]);
+      wsData.push(["", "", "", ""]);
+      
+      // Totaux en bas à droite
+      wsData.push(["", "", "Montant TTC", totalTTC]);
+      wsData.push(["", "", "Versement", versement]);
+      wsData.push(["", "", "Reste à payé", reste]);
+
+      // Création de la feuille
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+      // Ajustement de la largeur des colonnes pour un Excel propre
+      ws['!cols'] = [
+        { wch: 45 }, // Colonne A: Description (Plus large)
+        { wch: 10 }, // Colonne B: Quantité
+        { wch: 25 }, // Colonne C: Prix unitaire / Info Client
+        { wch: 15 }  // Colonne D: Total
+      ];
+
+      // Génération du fichier
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Facture");
+      XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
+      
+    } catch (error) {
+      console.error("Erreur lors de la génération Excel :", error);
+      alert("Erreur lors de la création du fichier Excel. Vérifie l'import de XLSX.");
     }
-    const wsData = [
-      [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", "", `N° de facture : ${order.orderNumber}`],
-      [`${COMPANY_INFO.address}`, "", "", `Date : ${formattedDate}`],
-      [`${COMPANY_INFO.rc}`, "", "", `Nom du client : ${order.customerName}`],
-      [`${COMPANY_INFO.nif}`, "", "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`],
-      [`${COMPANY_INFO.phone}`, "", "", `Téléphone : ${customer?.phone || ""}`],
-      [`${COMPANY_INFO.email}`, "", "", ""],
-      ["", "", "", ""],
-      ["Description", "Quantité", "Prix unitaire", "Total"]
-    ];
-
-    tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
-    wsData.push(["Livraison", 1, shipping, shipping]);
-    wsData.push(["", "", "", ""]);
-    wsData.push(["", "", "Montant TTC", totalTTC]);
-    wsData.push(["", "", "Versement", versement]);
-    wsData.push(["", "", "Reste à payé", reste]);
-
-    const ws = window.XLSX.utils.aoa_to_sheet(wsData);
-    const wb = window.XLSX.utils.book_new();
-    window.XLSX.utils.book_append_sheet(wb, ws, "Facture");
-    window.XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
   };
 
   return (
-    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[2000] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
-      <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
+      <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
         
+        {/* BARRE D'ACTIONS */}
         <div className="absolute top-4 right-4 flex items-center gap-2 z-20 print:hidden">
           <input 
             type="date" 
@@ -1318,7 +1345,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
           <button onClick={generateExcel} className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] border border-[#E8D5C4] text-[10px] font-black uppercase rounded-xl shadow-sm hover:bg-[#E8D5C4] transition-colors">
             Excel
           </button>
-          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm">
+          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm" title="Imprimer ou Sauvegarder en PDF">
             <Printer size={16} />
           </button>
           <button onClick={onClose} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm">
@@ -1326,7 +1353,9 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
           </button>
         </div>
 
+        {/* CONTENU VISUEL */}
         <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:overflow-visible print:pb-0 print:h-auto">
+          
           <div className="bg-[#FAF7F2] p-8 pt-12 border-b border-[#E8D5C4]/40 text-center relative print:bg-white print:border-b-2 print:border-black print:p-4">
             <Receipt size={32} className="mx-auto mb-3 text-[#8D7B68] print:text-black" />
             <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">FACTURE COMMERCIALE</h2>
@@ -1334,6 +1363,8 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
           </div>
 
           <div className="p-8 space-y-6 print:p-4 print:space-y-4">
+            
+            {/* Blocs d'informations */}
             <div className="grid grid-cols-2 gap-4 text-xs border-b border-gray-100 pb-4 print:border-black">
               <div className="space-y-1 text-[#4A3F35] print:text-black font-medium">
                 <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold print:text-gray-600">Émetteur</p>
@@ -1344,6 +1375,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
                 <p>{COMPANY_INFO.phone}</p>
                 <p className="text-[11px] text-gray-400 font-normal">{COMPANY_INFO.email}</p>
               </div>
+              
               <div className="space-y-1 text-right text-[#4A3F35] print:text-black font-medium">
                 <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold text-right print:text-gray-600">Destinataire</p>
                 <p className="font-black text-sm text-[#4A3F35] print:text-black">{order.customerName}</p>
@@ -1354,6 +1386,7 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
               </div>
             </div>
 
+            {/* Tableau */}
             <div>
               <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">Désignation des prestations</h4>
               <div className="border border-[#E8D5C4]/60 rounded-xl overflow-hidden bg-white shadow-sm print:border-black print:rounded-none">
@@ -1376,16 +1409,17 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
                       </tr>
                     ))}
                     <tr className="bg-gray-50/30 font-normal">
-                      <td className="p-3 text-gray-400 italic">Frais de livraison ({customer?.deliveryMode === "stopdesk" ? "Stopdesk" : "Domicile"})</td>
+                      <td className="p-3 text-gray-400 italic">Livraison ({customer?.deliveryMode === "stopdesk" ? "Stopdesk" : "Domicile"})</td>
                       <td className="p-3 text-center text-gray-400">1</td>
-                      <td className="p-3 text-right text-gray-400">{formatDA(shipping)}</td>
-                      <td className="p-3 text-right text-gray-400 font-bold">{formatDA(shipping)}</td>
+                      <td className="p-3 text-right text-gray-400">{shipping > 0 ? formatDA(shipping) : "-"}</td>
+                      <td className="p-3 text-right text-gray-400 font-bold">{shipping > 0 ? formatDA(shipping) : "-"}</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
 
+            {/* Totaux */}
             <div className="bg-[#FAF7F2]/80 p-5 rounded-2xl border border-[#E8D5C4]/40 space-y-2.5 print:bg-transparent print:border-none print:p-0">
               <div className="flex justify-between text-xs text-gray-500 font-bold">
                 <span>Sous-total articles</span>
@@ -1402,25 +1436,28 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
                 <span>+ {formatDA(shipping)}</span>
               </div>
               <div className="flex justify-between text-xs text-[#8D7B68] font-bold border-t border-[#E8D5C4]/30 pt-2">
-                <span>Total TTC de la facture</span>
+                <span>Montant TTC de la facture</span>
                 <span>{formatDA(totalTTC)}</span>
               </div>
               <div className="flex justify-between text-xs text-gray-400 font-medium">
-                <span>Acomptes encaissés</span>
+                <span>Versement encaissé</span>
                 <span>- {formatDA(versement)}</span>
               </div>
+              
               <div className="h-px bg-[#E8D5C4] my-2 opacity-60 print:bg-black print:opacity-100"></div>
+              
               <div className="flex justify-between items-center font-serif font-bold text-lg text-[#8D7B68] print:text-black">
-                <span>Solde restant dû</span>
+                <span>Reste à payer</span>
                 <span className={`px-3 py-1 rounded-xl text-base ${reste > 0 ? "bg-red-50 text-red-500 border border-red-100 print:bg-transparent print:text-black print:border-none" : "bg-green-50 text-green-600 border border-green-100 print:bg-transparent print:text-black print:border-none"}`}>
-                  {reste > 0 ? formatDA(reste) : "SOLDE RÉGLÉ ✓"}
+                  {reste > 0 ? formatDA(reste) : "RÉGLÉ ✓"}
                 </span>
               </div>
             </div>
 
             <div className="text-center pt-2 border-t border-[#E8D5C4]/20 print:border-black">
-              <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-black print:text-black">Merci pour votre fidélité à Elegancia Shop ✨</p>
+              <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-black print:text-black">Merci pour votre confiance ✨</p>
             </div>
+
           </div>
         </div>
       </div>
