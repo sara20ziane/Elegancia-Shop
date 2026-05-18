@@ -1279,57 +1279,36 @@ const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
   const formattedDate = new Date(invoiceDate).toLocaleDateString("fr-FR");
 
   // CORRECTION : Fonction d'export Excel natif (sans le "window.")
+  // Fonction d'export Excel natif
   const generateExcel = () => {
-    try {
-      // Structure exacte de la photo Excel (Colonnes A, B, C, D)
-      const wsData = [
-        [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", `N° de facture : ${order.orderNumber}`, ""],
-        [`${COMPANY_INFO.address}`, "", `Date : ${formattedDate}`, ""],
-        [`${COMPANY_INFO.rc}`, "", `Nom du client : ${order.customerName}`, ""],
-        [`${COMPANY_INFO.nif}`, "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`, ""],
-        [`${COMPANY_INFO.phone}`, "", `Téléphone : ${customer?.phone || ""}`, ""],
-        [`${COMPANY_INFO.email}`, "", "", ""],
-        ["", "", "", ""],
-        ["Description", "Quantité", "Prix unitaire", "Total"]
-      ];
+    const wsData = [
+      [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", "", `N° de facture : ${order.orderNumber}`],
+      [`${COMPANY_INFO.address}`, "", "", `Date : ${formattedDate}`],
+      [`${COMPANY_INFO.rc}`, "", "", `Nom du client : ${order.customerName}`],
+      [`${COMPANY_INFO.nif}`, "", "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`],
+      [`${COMPANY_INFO.phone}`, "", "", `Téléphone : ${customer?.phone || ""}`],
+      [`${COMPANY_INFO.email}`, "", "", ""],
+      ["", "", "", ""],
+      ["Description", "Quantité", "Prix unitaire", "Total"]
+    ];
 
-      // Ajout des articles
-      tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
-      
-      // Ajout de la livraison
-      wsData.push(["Livraison", 1, shipping > 0 ? shipping : "-", shipping > 0 ? shipping : "-"]);
-      
-      // Espaces vides comme sur ta photo
-      wsData.push(["", "", "", ""]);
-      wsData.push(["", "", "", ""]);
-      
-      // Totaux en bas à droite
-      wsData.push(["", "", "Montant TTC", totalTTC]);
-      wsData.push(["", "", "Versement", versement]);
-      wsData.push(["", "", "Reste à payé", reste]);
+    tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
+    wsData.push(["Livraison", 1, shipping, shipping]);
+    wsData.push(["", "", "", ""]);
+    wsData.push(["", "", "Montant TTC", totalTTC]);
+    wsData.push(["", "", "Versement", versement]);
+    wsData.push(["", "", "Reste à payé", reste]);
 
-      // Création de la feuille
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
+    // On utilise directement XLSX importé tout en haut
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Ajustement des largeurs de colonnes pour que ce soit joli
+    ws['!cols'] = [{ wch: 45 }, { wch: 10 }, { wch: 25 }, { wch: 15 }];
 
-      // Ajustement de la largeur des colonnes pour un Excel propre
-      ws['!cols'] = [
-        { wch: 45 }, // Colonne A: Description (Plus large)
-        { wch: 10 }, // Colonne B: Quantité
-        { wch: 25 }, // Colonne C: Prix unitaire / Info Client
-        { wch: 15 }  // Colonne D: Total
-      ];
-
-      // Génération du fichier
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Facture");
-      XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
-      
-    } catch (error) {
-      console.error("Erreur lors de la génération Excel :", error);
-      alert("Erreur lors de la création du fichier Excel. Vérifie l'import de XLSX.");
-    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Facture");
+    XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
   };
-
   return (
     <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
       <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
