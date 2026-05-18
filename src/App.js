@@ -1237,6 +1237,208 @@ const EditAchatSiteModal = ({ groupe, orders, onClose, showToast }) => {
     </div>
   );
 };
+const InvoiceModal = ({ order, customers, onClose, formatDA }) => {
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
+  const customer = customers.find((c) => c.id === order.customerId);
+
+  // Informations immuables de l'entreprise (Elegancia Shop)
+  const COMPANY_INFO = {
+    name: "Elegancia Shop",
+    address: "Adresse Draria",
+    rc: "RC 16/00-4983411 D 25",
+    nif: "NIF 19616040013614461600",
+    phone: "Téléphone 0797793830",
+    email: "Email khaledabrl994@gmail.com",
+  };
+
+  // Préparation et traitement des données du tableau
+  const items = order.items || [];
+  let calculatedSubtotal = 0;
+  const tableRows = [];
+
+  items.forEach((item) => {
+    if (item.status === "Retourné Fournisseur" && item.responsableRetour !== "cliente") return;
+    const price = parseFloat(item.priceVente) || 0;
+    const desc = `${item.name || "Article"} (${item.size || "Unique"} / ${item.color || "Standard"})`;
+    tableRows.push({ desc, qty: 1, pu: price, total: price });
+    calculatedSubtotal += price;
+  });
+
+  const shipping = parseFloat(order.shippingNational) || 0;
+  const subtotal = calculatedSubtotal;
+  const advance = parseFloat(order.advancePayment) || 0;
+  const discount = parseFloat(order.discount) || 0;
+  const refund = parseFloat(order.refundAmount) || 0;
+  
+  const versement = advance - refund;
+  const totalTTC = subtotal + shipping - discount;
+  const isFullyPaidStatus = order.status === "Payée" || order.status === "Payée et livrée";
+  const reste = isFullyPaidStatus ? 0 : Math.max(0, totalTTC - versement);
+
+  const formattedDate = new Date(invoiceDate).toLocaleDateString("fr-FR");
+
+  // Fonction d'export Excel natif
+  const generateExcel = () => {
+    const wsData = [
+      [`Nom de l'entreprise : ${COMPANY_INFO.name}`, "", "", `N° de facture : ${order.orderNumber}`],
+      [`${COMPANY_INFO.address}`, "", "", `Date : ${formattedDate}`],
+      [`${COMPANY_INFO.rc}`, "", "", `Nom du client : ${order.customerName}`],
+      [`${COMPANY_INFO.nif}`, "", "", `Adresse : ${customer?.wilaya || ""} ${customer?.commune || ""}`],
+      [`${COMPANY_INFO.phone}`, "", "", `Téléphone : ${customer?.phone || ""}`],
+      [`${COMPANY_INFO.email}`, "", "", ""],
+      ["", "", "", ""],
+      ["Description", "Quantité", "Prix unitaire", "Total"]
+    ];
+
+    tableRows.forEach(r => wsData.push([r.desc, r.qty, r.pu, r.total]));
+    wsData.push(["Livraison", 1, shipping, shipping]);
+    wsData.push(["", "", "", ""]);
+    wsData.push(["", "", "Montant TTC", totalTTC]);
+    wsData.push(["", "", "Versement", versement]);
+    wsData.push(["", "", "Reste à payé", reste]);
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Facture");
+    XLSX.writeFile(wb, `Facture_${order.orderNumber}.xlsx`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#4A3F35]/50 backdrop-blur-sm z-[1010] flex items-center justify-center p-4 print:absolute print:inset-0 print:bg-white print:p-0 print:z-[9999] print:block print:h-auto">
+      <div className="bg-white w-full max-w-2xl rounded-[2rem] shadow-2xl relative animate-in zoom-in-95 flex flex-col max-h-[90vh] overflow-hidden print:w-full print:max-w-full print:max-h-none print:shadow-none print:rounded-none print:animate-none print:transform-none print:border-none print:h-auto print:overflow-visible">
+        
+        {/* BARRE D'ACTIONS STYLE PREMIUM (Masquée à l'impression) */}
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-20 print:hidden">
+          <input 
+            type="date" 
+            value={invoiceDate} 
+            onChange={(e) => setInvoiceDate(e.target.value)} 
+            className="px-2.5 py-1.5 rounded-xl border border-[#E8D5C4] text-[11px] font-bold text-[#8D7B68] bg-white outline-none shadow-sm cursor-pointer" 
+          />
+          <button onClick={generateExcel} className="px-3 py-1.5 bg-[#FAF7F2] text-[#8D7B68] border border-[#E8D5C4] text-[10px] font-black uppercase rounded-xl shadow-sm hover:bg-[#E8D5C4] transition-colors">
+            Excel
+          </button>
+          <button onClick={() => window.print()} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-[#8D7B68] hover:text-white text-[#8D7B68] transition-colors shadow-sm">
+            <Printer size={16} />
+          </button>
+          <button onClick={onClose} className="p-2 bg-gray-50/90 backdrop-blur-md rounded-full hover:bg-gray-200 text-gray-600 transition-colors shadow-sm">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* CONTENU VISUEL IDENTIQUE À TES AUTRES BONS */}
+        <div className="overflow-y-auto custom-scrollbar flex-1 pb-8 print:overflow-visible print:pb-0 print:h-auto">
+          
+          {/* En-tête de section beige de la suite Yuna's Shop */}
+          <div className="bg-[#FAF7F2] p-8 pt-12 border-b border-[#E8D5C4]/40 text-center relative print:bg-white print:border-b-2 print:border-black print:p-4">
+            <Receipt size={32} className="mx-auto mb-3 text-[#8D7B68] print:text-black" />
+            <h2 className="font-serif text-2xl font-bold text-[#8D7B68] tracking-widest mb-1 print:text-black">FACTURE COMMERCIALE</h2>
+            <p className="text-[10px] uppercase tracking-widest text-[#B8A99A] font-bold print:text-gray-800">Référence #{order.orderNumber}</p>
+          </div>
+
+          <div className="p-8 space-y-6 print:p-4 print:space-y-4">
+            
+            {/* Blocs d'informations Alignés (Entreprise vs Client) */}
+            <div className="grid grid-cols-2 gap-4 text-xs border-b border-gray-100 pb-4 print:border-black">
+              <div className="space-y-1 text-[#4A3F35] print:text-black font-medium">
+                <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold print:text-gray-600">Émetteur</p>
+                <p className="font-black text-sm text-[#8D7B68] print:text-black">{COMPANY_INFO.name}</p>
+                <p>{COMPANY_INFO.address}</p>
+                <p>{COMPANY_INFO.rc}</p>
+                <p>{COMPANY_INFO.nif}</p>
+                <p>{COMPANY_INFO.phone}</p>
+                <p className="text-[11px] text-gray-400 font-normal">{COMPANY_INFO.email}</p>
+              </div>
+              
+              <div className="space-y-1 text-right text-[#4A3F35] print:text-black font-medium">
+                <p className="text-[9px] uppercase tracking-widest text-gray-400 font-bold text-right print:text-gray-600">Destinataire</p>
+                <p className="font-black text-sm text-[#4A3F35] print:text-black">{order.customerName}</p>
+                <p className="font-bold text-[#8D7B68] print:text-black">{customer?.phone}</p>
+                <p>{customer?.wilaya} - {customer?.commune}</p>
+                <p className="text-[10px] text-gray-400">Facture N°: {order.orderNumber}</p>
+                <p className="text-[10px] text-gray-400">Date d'édition : {formattedDate}</p>
+              </div>
+            </div>
+
+            {/* Tableau épuré des articles style Yuna's Shop */}
+            <div>
+              <h4 className="text-[9px] uppercase tracking-widest text-gray-400 font-bold border-b border-gray-100 pb-2 mb-3 print:text-gray-800 print:border-black">Désignation des prestations</h4>
+              <div className="border border-[#E8D5C4]/60 rounded-xl overflow-hidden bg-white shadow-sm print:border-black print:rounded-none">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead className="bg-[#FAF7F2] border-b border-[#E8D5C4]/40 text-[#8D7B68] font-bold uppercase text-[9px] print:bg-gray-100 print:border-black">
+                    <tr>
+                      <th className="p-3">Description</th>
+                      <th className="p-3 text-center w-16">Qté</th>
+                      <th className="p-3 text-right w-28">Prix unitaire</th>
+                      <th className="p-3 text-right w-28">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 font-medium text-[#4A3F35] print:divide-gray-300">
+                    {tableRows.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50/50">
+                        <td className="p-3">{row.desc}</td>
+                        <td className="p-3 text-center font-bold text-gray-400">{row.qty}</td>
+                        <td className="p-3 text-right">{formatDA(row.pu)}</td>
+                        <td className="p-3 text-right font-bold">{formatDA(row.total)}</td>
+                      </tr>
+                    ))}
+                    {/* Ligne Frais de Livraison insérée de manière fluide */}
+                    <tr className="bg-gray-50/30 font-normal">
+                      <td className="p-3 text-gray-400 italic">Frais de livraison ({customer?.deliveryMode === "stopdesk" ? "Stopdesk" : "Domicile"})</td>
+                      <td className="p-3 text-center text-gray-400">1</td>
+                      <td className="p-3 text-right text-gray-400">{formatDA(shipping)}</td>
+                      <td className="p-3 text-right text-gray-400 font-bold">{formatDA(shipping)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Zone financière finale identique à tes reçus originaux */}
+            <div className="bg-[#FAF7F2]/80 p-5 rounded-2xl border border-[#E8D5C4]/40 space-y-2.5 print:bg-transparent print:border-none print:p-0">
+              <div className="flex justify-between text-xs text-gray-500 font-bold">
+                <span>Sous-total articles</span>
+                <span>{formatDA(subtotal)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex justify-between text-xs text-green-600 font-bold">
+                  <span>Remise déduite</span>
+                  <span>- {formatDA(discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-xs text-gray-500 font-bold">
+                <span>Frais d'expédition national</span>
+                <span>+ {formatDA(shipping)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-[#8D7B68] font-bold border-t border-[#E8D5C4]/30 pt-2">
+                <span>Total TTC de la facture</span>
+                <span>{formatDA(totalTTC)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400 font-medium">
+                <span>Acomptes encaissés</span>
+                <span>- {formatDA(versement)}</span>
+              </div>
+              
+              <div className="h-px bg-[#E8D5C4] my-2 opacity-60 print:bg-black print:opacity-100"></div>
+              
+              <div className="flex justify-between items-center font-serif font-bold text-lg text-[#8D7B68] print:text-black">
+                <span>Solde restant dû</span>
+                <span className={`px-3 py-1 rounded-xl text-base ${reste > 0 ? "bg-red-50 text-red-500 border border-red-100 print:bg-transparent print:text-black print:border-none" : "bg-green-50 text-green-600 border border-green-100 print:bg-transparent print:text-black print:border-none"}`}>
+                  {reste > 0 ? formatDA(reste) : "SOLDE RÉGLÉ ✓"}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center pt-2 border-t border-[#E8D5C4]/20 print:border-black">
+              <p className="text-[8px] uppercase tracking-[0.2em] text-[#D4B996] font-black print:text-black">Merci pour votre fidélité à Elegancia Shop ✨</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 // --- MAIN APP ---
 const MainApp = ({ user }) => {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -1255,6 +1457,7 @@ const MainApp = ({ user }) => {
   
   const [showCalculator, setShowCalculator] = useState(false);
   const [showTariffs, setShowTariffs] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(null);
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -2245,6 +2448,7 @@ const MainApp = ({ user }) => {
                           <button onClick={() => setShowReceipt(o)} className="text-[#D4B996] p-1.5 hover:bg-[#FAF7F2] rounded-lg"><Receipt size={16} /></button>
                           <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5 hover:bg-gray-100 rounded-lg"><Edit3 size={16} /></button>
                           <button onClick={() => setDeleteTarget({ id: o.id, collection: "orders", label: o.orderNumber })} className="text-red-300 p-1.5 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                          <button onClick={() => setShowInvoice(o)} className="text-[#8D7B68] p-1.5 hover:bg-[#FAF7F2] rounded-lg" title="Facture PDF / Excel"><FileText size={16} /></button>
                         </td>
                       </tr>
                     );
@@ -2306,6 +2510,7 @@ const MainApp = ({ user }) => {
                         <button onClick={() => setShowCostBreakdown(o)} className="text-blue-400 p-1.5"><Calculator size={16} /></button>
                         <button onClick={() => setShowDeliverySlip(o)} className="text-[#8D7B68] p-1.5"><Truck size={16} /></button>
                         <button onClick={() => setShowReceipt(o)} className="text-[#D4B996] p-1.5"><Receipt size={16} /></button>
+                        <button onClick={() => setShowInvoice(o)} className="text-[#8D7B68] p-1.5"><FileText size={16} /></button>
                       </div>
                       <div className="flex gap-1">
                         <button onClick={() => openOrderForEdit(o)} className="text-gray-400 p-1.5"><Edit3 size={16} /></button>
@@ -2819,6 +3024,7 @@ const MainApp = ({ user }) => {
       {showCostBreakdown && <CostBreakdownModal order={showCostBreakdown} onClose={() => setShowCostBreakdown(null)} formatDA={formatDA} calculateTotals={calculateTotals} />}
       {showReceipt && <ReceiptModal order={showReceipt} onClose={() => setShowReceipt(null)} formatDA={formatDA} />}
       {showDeliverySlip && <DeliverySlipModal order={showDeliverySlip} customers={customers} onClose={() => setShowDeliverySlip(null)} formatDA={formatDA} />}
+      {showInvoice && <InvoiceModal order={showInvoice} customers={customers} formatDA={formatDA} onClose={() => setShowInvoice(null)} />}
       {showCustomerHistory && (
         <CustomerHistoryModal
           customer={showCustomerHistory}
