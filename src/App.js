@@ -1681,7 +1681,18 @@ const MainApp = ({ user }) => {
       let itVente = parseFloat(it.priceVente) || 0;
 
       if (it.status === "Retourné Fournisseur") {
-        if (it.sheinRembourse) itAchatDA = 0;
+        // Nouvelle logique de remboursement (compatible avec les anciennes commandes)
+        const typeRemb = it.sheinRembourseType || (it.sheinRembourse ? "total" : "non");
+        
+        if (typeRemb === "total") {
+          itAchatDA = 0; // Remboursement complet, l'article ne te coûte rien
+        } else if (typeRemb === "partiel") {
+          const rembEur = parseFloat(it.sheinRembourseMontantEur) || 0;
+          const realRembEur = rembEur * source.ratio; // On applique le ratio (ex: Carte Cadeau)
+          // Le coût devient la différence entre le prix payé et le remboursement reçu
+          itAchatDA = Math.max(0, realAchatEuro - realRembEur) * rateEur;
+        }
+
         if (it.responsableRetour === "cliente") {
           const fraisAChargeCliente = (parseFloat(it.fraisRetourLivreur) || 0) + (parseFloat(it.fraisRetourFournisseur) || 0);
           itVente = fraisAChargeCliente;
@@ -3347,13 +3358,44 @@ const OrderModal = ({
                               <option value="cliente">Changement d'avis (Cliente)</option>
                             </select>
                           </div>
-                          <div className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-red-100">
-                            <label className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Remboursé par Shein ?</label>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" className="sr-only peer" checked={item.sheinRembourse || false} onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, sheinRembourse: e.target.checked } : oi))} />
-                              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
-                            </label>
-                          </div>
+                          <div className="flex flex-col justify-center bg-white p-2.5 rounded-lg border border-red-100 gap-2">
+  <label className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Remboursement Site (€)</label>
+  <div className="flex gap-2">
+    <select 
+      className="flex-1 p-1.5 rounded-md text-xs font-bold bg-red-50 text-red-600 border border-red-100 outline-none"
+      value={item.sheinRembourseType || (item.sheinRembourse ? "total" : "non")}
+      onChange={(e) => {
+        const val = e.target.value;
+        setOrderItems(orderItems.map(oi => {
+          if (oi.id === item.id) {
+            return { 
+              ...oi, 
+              sheinRembourseType: val, 
+              sheinRembourse: val === "total", // Rétrocompatibilité
+              sheinRembourseMontantEur: val === "total" ? oi.priceAchatEuro : (val === "non" ? "" : oi.sheinRembourseMontantEur)
+            };
+          }
+          return oi;
+        }));
+      }}
+    >
+      <option value="non">Non remboursé</option>
+      <option value="partiel">Partiel (Précisez →)</option>
+      <option value="total">Total</option>
+    </select>
+    
+    {(item.sheinRembourseType === "partiel") && (
+      <input 
+        type="number" 
+        step="0.01" 
+        placeholder="€ reçu" 
+        className="w-20 p-1.5 rounded-md text-xs font-bold text-center bg-white border border-red-200 outline-none text-red-600"
+        value={item.sheinRembourseMontantEur || ""}
+        onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, sheinRembourseMontantEur: e.target.value } : oi))}
+      />
+    )}
+  </div>
+</div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="space-y-1">
