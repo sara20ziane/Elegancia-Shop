@@ -3343,7 +3343,7 @@ const OrderModal = ({
                           <div className="space-y-1">
                             <label className="text-[9px] font-bold text-red-500 uppercase tracking-widest ml-1">Responsable du retour</label>
                             <select className="w-full p-2.5 rounded-lg text-xs font-bold outline-none border border-transparent focus:border-red-200 bg-white text-[#4A3F35]" value={item.responsableRetour || "boutique"} onChange={(e) => setOrderItems(orderItems.map(oi => oi.id === item.id ? { ...oi, responsableRetour: e.target.value } : oi))}>
-                              <option value="boutique">Erreur Yuna's Shop / Shein</option>
+                              <option value="boutique">Erreur Elegancia Shop / Shein</option>
                               <option value="cliente">Changement d'avis (Cliente)</option>
                             </select>
                           </div>
