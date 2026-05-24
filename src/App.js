@@ -1489,7 +1489,7 @@ const MainApp = ({ user }) => {
   const [filterDelivery, setFilterDelivery] = useState("");
   const [filterStopdesk, setFilterStopdesk] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
-  const [orderStatusFilter, setOrderStatusFilter] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("en_cours");
   const [orderSortBy, setOrderSortBy] = useState("dateDesc"); // Par défaut : plus récent
   const [orderNumberFilter, setOrderNumberFilter] = useState("");
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1773,7 +1773,10 @@ const MainApp = ({ user }) => {
             (item.category || "").toLowerCase().includes(searchLower)
         );
         const matchSearch = matchBasic || matchItems;
-        const matchStatus = !orderStatusFilter || o.status === orderStatusFilter;
+        const matchStatus = 
+          orderStatusFilter === "tous" ? true :
+          orderStatusFilter === "en_cours" ? (o.status !== "Payée et livrée" && o.status !== "Annulée") :
+          o.status === orderStatusFilter;
         
         // NOUVEAU : Le filtre strict sur le numéro de commande
         const matchOrderNumber = !orderNumberFilter || (o.orderNumber || "").toLowerCase().includes(orderNumberFilter.toLowerCase());
@@ -2392,7 +2395,8 @@ const MainApp = ({ user }) => {
               <div className="relative w-full md:w-56 shrink-0">
                 <Filter size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#B8A99A]" />
                 <select value={orderStatusFilter} onChange={(e) => setOrderStatusFilter(e.target.value)} className="w-full pl-12 pr-4 py-3.5 md:py-2.5 bg-white/80 rounded-2xl md:rounded-full text-sm font-bold shadow-sm outline-none text-[#8D7B68] border border-[#E8D5C4]/30 appearance-none">
-                  <option value="">Tous les statuts</option>
+                  <option value="en_cours">En cours (Actives)</option>
+                  <option value="tous">Toutes les commandes</option>
                   {orderStatusesList.map((st) => <option key={st} value={st}>{st}</option>)}
                 </select>
               </div>
