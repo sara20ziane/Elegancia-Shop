@@ -2037,8 +2037,20 @@ const MainApp = ({ user }) => {
         await addDoc(collection(db, "artifacts", appId, "public", "data", "orders"), data);
         showToast("Commande ajoutée avec succès");
       }
+      
       setShowAddOrder(false);
       setEditingOrder(null);
+      
+      // 👇 AJOUTE CES LIGNES ICI POUR FORCER LE VIDAGE DE LA MÉMOIRE 👇
+      setOrderPayments([]); 
+      setOrderItems([]);
+      setShippingNational(0);
+      setOrderDiscount(0);
+      setOrderRefundAmount(0);
+      setOrderReceiptImage("");
+      setSoldeSiteGlobalEur("");
+      // 👆 FIN DE L'AJOUT 👆
+
     } catch (err) {
       showToast("Erreur lors de la sauvegarde", "error");
     } finally {
@@ -3061,9 +3073,22 @@ const MainApp = ({ user }) => {
           setOrderRefundAmount={setOrderRefundAmount}
           orderReceiptImage={orderReceiptImage}
           setOrderReceiptImage={setOrderReceiptImage} 
-          soldeSiteGlobalEur={soldeSiteGlobalEur} // <--- AJOUTE CECI
-          setSoldeSiteGlobalEur={setSoldeSiteGlobalEur} // <--- ET CECI
-          onClose={() => { setShowAddOrder(false); setEditingOrder(null); }}
+          soldeSiteGlobalEur={soldeSiteGlobalEur} 
+          setSoldeSiteGlobalEur={setSoldeSiteGlobalEur} 
+          
+          // 👇 MODIFIE LE onClose COMME CECI 👇
+          onClose={() => { 
+            setShowAddOrder(false); 
+            setEditingOrder(null); 
+            setOrderPayments([]); 
+            setOrderItems([]);
+            setShippingNational(0);
+            setOrderDiscount(0);
+            setOrderRefundAmount(0);
+            setOrderReceiptImage("");
+            setSoldeSiteGlobalEur("");
+          }}
+          // 👆 FIN DE L'AJOUT 👆
         />
       )}
       {showAddArrivage && (
